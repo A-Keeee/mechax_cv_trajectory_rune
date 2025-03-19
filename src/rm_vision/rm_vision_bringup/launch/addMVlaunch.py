@@ -74,7 +74,7 @@ def generate_launch_description():
             executable='component_container_mt',
             composable_node_descriptions=[
                 cam_detector,
-                #detector_node,
+                # detector_node,
                 rune_composable_node,
             ],
             output='both',

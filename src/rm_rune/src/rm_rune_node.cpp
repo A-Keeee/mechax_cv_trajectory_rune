@@ -5,7 +5,10 @@
 
 namespace qianli_rm_rune
 {
-    RuneNode::RuneNode(const rclcpp::NodeOptions & options) : Node("rm_rune_node", options)
+    RuneNode::RuneNode(const rclcpp::NodeOptions & options) : Node("rm_rune_node", options),
+    frame_count_(0),
+    last_time_(this->now())
+    
     {
         // 在控制台输出节点启动信息
         RCLCPP_INFO(get_logger(), "Hello, QianLi RM Rune!");
@@ -33,7 +36,7 @@ namespace qianli_rm_rune
             });
 
         // 调用神经网络识别
-        const std::string& modelPath = "/home/qianli/buff25/mechax_cv_trajectory/src/rm_rune/model/rm_buff.onnx"; // 确保路径正确
+        const std::string& modelPath = "/home/qianli/fyk/mechax_cv_trajectory_rune/src/rm_rune/model/rm_buff.onnx"; // 确保路径正确
         const std::string& onnx_provider = OnnxProviders::CPU; // "cpu";CPUExecutionProvider
         const std::string& onnx_logid = "yolov8_inference2";
 
@@ -55,10 +58,14 @@ namespace qianli_rm_rune
         // 初始化tf2缓存和监听器，用于将预测的3D坐标转换到不同的坐标系
         tf2_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
         auto timer_interface = std::make_shared<tf2_ros::CreateTimerROS>(
-            this->get_node_base_interface(), this->get_node_timers_interface());
+        this->get_node_base_interface(), this->get_node_timers_interface());
         tf2_buffer_->setCreateTimerInterface(timer_interface);
         tf2_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf2_buffer_);
 
+
+
+
+        //debug
         // 创建一次性定时器，用于延迟初始化 image_transport
         init_timer_ = this->create_wall_timer(
             std::chrono::milliseconds(100), // 延迟时间，可以根据需要调整
@@ -128,7 +135,21 @@ namespace qianli_rm_rune
     - msg: sensor_msgs::msg::Image类型，表示接收到的图像消息。
     */
     void RuneNode::rune_image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
-    {
+    {   
+
+        // 新增帧率计算逻辑
+        auto current_time = this->now();
+        frame_count_++;
+        double elapsed = (current_time - last_time_).seconds();
+        
+        if (elapsed >= 1.0) {
+            double fps = frame_count_ / elapsed;
+            RCLCPP_INFO(get_logger(), "[FPS] Current: %.2f", fps);
+            frame_count_ = 0;
+            last_time_ = current_time;
+        }
+
+
         cv::Mat rune_image;
         try
         {
@@ -164,17 +185,18 @@ namespace qianli_rm_rune
         contour_info_.plot_results(rune_image, objs, posePalette, names, rune_image.size(), contours, result_image);
 
 
-        // // 将处理后的图像转换为 ROS 消息并发布
-        // if (it_ && result_image_pub_)
-        // {
-        //     auto result_msg = cv_bridge::CvImage(msg->header, "rgb8", result_image).toImageMsg();
-        //     result_image_pub_.publish(result_msg); // 使用 image_transport 发布
-        //     // RCLCPP_INFO(get_logger(), "Published result_image to /rune/result_image");
-        // }
-        // else
-        // {
-        //     RCLCPP_WARN(get_logger(), "ImageTransport not initialized yet. Skipping image publish.");
-        // }
+        // 将处理后的图像转换为 ROS 消息并发布
+        if (it_ && result_image_pub_)
+        {   
+            //debug
+            // auto result_msg = cv_bridge::CvImage(msg->header, "rgb8", result_image).toImageMsg();
+            // result_image_pub_.publish(result_msg); // 使用 image_transport 发布
+            // RCLCPP_INFO(get_logger(), "Published result_image to /rune/result_image");
+        }
+        else
+        {
+            RCLCPP_WARN(get_logger(), "ImageTransport not initialized yet. Skipping image publish.");
+        }
 
 
 
@@ -195,7 +217,7 @@ namespace qianli_rm_rune
             {contours[0][5].x,contours[0][5].y}   // p5
         };
 
-        std::cout << rune_imagePoints <<std::endl;
+        // std::cout << rune_imagePoints <<std::endl;
 
 
         contours_info_.clear();// 清空上一帧的数据
@@ -227,26 +249,17 @@ namespace qianli_rm_rune
 
         // 更新预测器并进行预测
         
-        predictor.update(blade.vector); // 计算目标与中心之间的向量
-        // std::cout<< blade.center<<";"<<blade.circle_center <<std::endl; // left_up : 0,0
-        // std::cout << blade.vector << std::endl;
+        // predictor.update(blade.vector); // 计算目标与中心之间的向量
 
 
-        auto radian = predictor.predict(); // 返回预测的角度
-        auto predicted_vector = power_rune_.predict(blade.vector, radian); // 返回预测的x，y坐标  1440;1080
+        //debug predict
+        // auto radian = predictor.predict(); // 返回预测的角度
+        // auto predicted_vector = power_rune_.predict(blade.vector, radian); // 返回预测的x，y坐标  1440;1080
         // RCLCPP_INFO(get_logger(), "Predicted vector: x = %f, y = %f", predicted_vector.x, predicted_vector.y);
 
-        cv::Point2f predicted_point;
-        predicted_point.x = predicted_vector.x + blade.circle_center.x;
-        predicted_point.y = predicted_vector.y + blade.circle_center.y;
-
-        std::cout<<"bladecenter"<<blade.center<<std::endl;
-
-        // rune_imagePoints[0] = calculateBPrime(blade.center, rune_imagePoints[0], predicted_point, radian);
-        // rune_imagePoints[1] = calculateBPrime(blade.center, rune_imagePoints[1], predicted_point, radian);
-        // rune_imagePoints[2] = calculateBPrime(blade.center, rune_imagePoints[2], predicted_point, radian);
-        // rune_imagePoints[3] = calculateBPrime(blade.center, rune_imagePoints[3], predicted_point, radian);
-        
+        // cv::Point2f predicted_point;
+        // predicted_point.x = predicted_vector.x + blade.circle_center.x;
+        // predicted_point.y = predicted_vector.y + blade.circle_center.y;
 
 
         // 如果没有相机信息，无法计算3D点位，输出错误信息
@@ -257,10 +270,10 @@ namespace qianli_rm_rune
         
 
         std::vector<cv::Point3f> rune_objectPoints = {
-            {0,-16, 75},
-            {0,-16, 65},
-            {0,16, 65},
-            {0,16, 75}
+            {0, 16, 75},
+            {0, 16, 65},
+            {0, -16, 65},
+            {0, -16, 75}
         };
 
 
@@ -283,6 +296,9 @@ namespace qianli_rm_rune
         point_msg.point.x = tvec.at<double>(0, 0)/100;
         point_msg.point.y = tvec.at<double>(1, 0)/100;
         point_msg.point.z = tvec.at<double>(2, 0)/100;
+
+
+
 
         // std::cout << "x:" << point_msg.point.x << std::endl;
         // std::cout << "y:" << point_msg.point.y << std::endl;
@@ -313,11 +329,15 @@ namespace qianli_rm_rune
         geometry_msgs::msg::PointStamped transformed_msg;
         try {
             transformed_msg.point = tf2_buffer_->transform(point_msg, "odom").point;
+            // double temp = transformed_msg.point.x;
+            // transformed_msg.point.x = transformed_msg.point.y;
+            // transformed_msg.point.y = temp;
             transformed_msg.header.frame_id = "odom";
             transformed_msg.header.stamp = point_msg.header.stamp;
             rune_pose_pub_->publish(transformed_msg);
             // rune_pose_pub_->publish(point_msg);
             // RCLCPP_INFO(get_logger(), "Published rune prediction: x = %f, y = %f, z = %f", point_msg.point.x, point_msg.point.y, point_msg.point.z);
+            // RCLCPP_INFO(get_logger(), "Published rune prediction: x = %f, y = %f, z = %f", transformed_msg.point.x, transformed_msg.point.y, transformed_msg.point.z);
         } catch (tf2::TransformException& ex) {
             RCLCPP_WARN(get_logger(), "无法将坐标从 camera_link 转换到 odom：%s", ex.what());
         }

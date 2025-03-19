@@ -57,6 +57,8 @@ public:
 
     // 相机矩阵
     cv::Mat camera_matrix_;
+    size_t frame_count_;
+    rclcpp::Time last_time_;
 
     // 配置和处理类
     Configuration cfg_;

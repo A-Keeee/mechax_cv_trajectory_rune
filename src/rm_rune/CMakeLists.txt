@@ -45,6 +45,7 @@ find_package(tf2_ros REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(pluginlib REQUIRED)
+find_package(glog REQUIRED)
 
 find_package(Ceres REQUIRED)
  
@@ -83,7 +84,7 @@ link_directories(${ONNXRUNTIME_ROOTDIR}/lib)
 target_link_directories(${PROJECT_NAME} PUBLIC
       $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
       $<INSTALL_INTERFACE:include>)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} onnxruntime Ceres::ceres)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} onnxruntime Ceres::ceres glog)
 
 rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN qianli_rm_rune::RuneNode
