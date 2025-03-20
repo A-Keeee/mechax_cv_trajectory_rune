@@ -28,10 +28,8 @@
 #include <tf2/convert.h>
 #include "power_rune.hpp"
 #include "blade.hpp"
-#include "autobackend.h"
 #include "prediction.hpp"
-#include "constants.h"
-#include "detect.hpp"
+#include "plot.hpp"
 #include <image_transport/image_transport.hpp> // 新增
 
 namespace qianli_rm_rune

@@ -3,18 +3,47 @@
 #include <random>
 
 #include <filesystem>
-#include "rm_rune/onnx_model_base.h"
-#include "rm_rune/autobackend.h"
 #include <opencv2/opencv.hpp>
 #include <vector>
 
-#include "rm_rune/augment.h"
-#include "rm_rune/constants.h"
-#include "rm_rune/common.h"
-#include "rm_rune/detect.h"
+#include "rm_rune/contour_info.hpp"
+#include "rm_rune/inference.hpp"
+#include "rm_rune/plot.hpp"
 
 
 namespace fs = std::filesystem;
+
+ContourInfo::ContourInfo()
+{
+    // 空的构造函数，用于创建一个空对象
+}
+
+ContourInfo::ContourInfo(const std::vector<cv::Point>& contour)//contour改为存储标签置信度+五个关键点
+{
+    // 分别累加 x 和 y 坐标
+    int sum_x = contour[1].x + contour[2].x + contour[5].x + contour[4].x;
+    int sum_y = contour[1].y + contour[2].y + contour[5].y + contour[4].y;
+
+    // 计算平均值
+    this->center = cv::Point(sum_x / 4, sum_y / 4);  // 使用 cv::Point 初始化中心点
+    this->circle_center = cv::Point(contour[3].x, contour[3].y);  // 使用 cv::Point 初始化圆心
+    this->index = contour[0].x;  // 初始化索引
+    this->conf = contour[0].y;  // 初始化置信度
+}
+
+// 设置轮廓并更新轮廓相关信息
+void ContourInfo::setContour(const std::vector<cv::Point>& contour)
+{
+    // 分别累加 x 和 y 坐标
+    int sum_x = contour[1].x + contour[2].x + contour[5].x + contour[4].x;
+    int sum_y = contour[1].y + contour[2].y + contour[5].y + contour[4].y;
+
+    // 计算平均值
+    this->center = cv::Point(sum_x / 4, sum_y / 4);  // 使用 cv::Point 更新中心点
+    this->circle_center = cv::Point(contour[3].x, contour[3].y);  // 使用 cv::Point 更新圆心
+    this->index = contour[0].x;  // 更新索引
+    this->conf = contour[0].y;  // 更新置信度
+}
 
 
 // Define the skeleton and color mappings
@@ -59,7 +88,8 @@ std::vector<cv::Scalar> generateRandomColors(int class_names_num, int numChannel
     return colors;
 }
 
-void plot_masks(cv::Mat img, std::vector<YoloResults>& result, std::vector<cv::Scalar> color,
+
+void ContourInfo::plot_masks(cv::Mat img, std::vector<YoloResults>& result, std::vector<cv::Scalar> color,
     std::unordered_map<int, std::string>& names)
 {
     cv::Mat mask = img.clone();
@@ -107,7 +137,7 @@ void plot_masks(cv::Mat img, std::vector<YoloResults>& result, std::vector<cv::S
 
 
 //void plot_keypoints(cv::Mat& image, const std::vector<std::vector<float>>& keypoints, const cv::Size& shape) {
-void plot_keypoints(cv::Mat& image, const std::vector<YoloResults>& results, const cv::Size& shape) {
+void ContourInfo::plot_keypoints(cv::Mat& image, const std::vector<YoloResults>& results, const cv::Size& shape) {
 
     int radius = 5;
     bool drawLines = true;
@@ -187,17 +217,22 @@ void plot_keypoints(cv::Mat& image, const std::vector<YoloResults>& results, con
     }
 }
 
-void plot_results(cv::Mat img, std::vector<YoloResults>& results,
+void ContourInfo::plot_results(cv::Mat img, std::vector<YoloResults>& results,
                   std::vector<cv::Scalar> color, std::unordered_map<int, std::string>& names,
-                  const cv::Size& shape
+                  const cv::Size& shape ,std::vector<std::vector<cv::Point>>& contours,
+                  cv::Mat& result_image
                   ) {
-
+    
+    
     cv::Mat mask = img.clone();
 
     int radius = 5;
     bool drawLines = true;
 
     auto raw_image_shape = img.size();
+
+    // std::cout << raw_image_shape.width<<";"<<raw_image_shape.height<< std::endl;
+
     std::vector<cv::Scalar> limbColorPalette;
     std::vector<cv::Scalar> kptColorPalette;
 
@@ -208,8 +243,10 @@ void plot_results(cv::Mat img, std::vector<YoloResults>& results,
     for (int index : kptColorIndices) {
         kptColorPalette.push_back(posePalette[index]);
     }
+    
 
     for (const auto& res : results) {
+        contours.emplace_back(); // 在 contours 中添加一个新的空的轮廓
         float left = res.bbox.x;
         float top = res.bbox.y;
         int color_num = res.class_idx;
@@ -236,7 +273,7 @@ void plot_results(cv::Mat img, std::vector<YoloResults>& results,
 
         // Create label
         std::stringstream labelStream;
-        labelStream << class_name << " " << std::fixed << std::setprecision(2) << res.conf;
+        labelStream << class_name << " " << std::fixed << std::setprecision(2) << res.conf;//创建标签标注目标对象的类别和置信度
         std::string label = labelStream.str();
 
         cv::Size text_size = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, 0.6, 2, nullptr);
@@ -250,64 +287,130 @@ void plot_results(cv::Mat img, std::vector<YoloResults>& results,
             auto keypoint = res.keypoints;
             bool isPose = keypoint.size() == 15;  // 关键点个数
             drawLines &= isPose;
+            int x_average = 0;
+            int y_average = 0;
 
-            // draw points
+            
+            bool allPointsValid = true; // 用于记录五个点的置信度是否都满足条件
+
+            // 先遍历五个点，检查它们的置信度
             for (int i = 0; i < 5; i++) {
                 int idx = i * 3;
-                int x_coord = static_cast<int>(keypoint[idx]);
-                int y_coord = static_cast<int>(keypoint[idx + 1]);
 
-                if (x_coord % raw_image_shape.width != 0 && y_coord % raw_image_shape.height != 0) {
-                    if (keypoint.size() == 3) {
-                        float conf = keypoint[2];
-                        if (conf < 0.5) {
-                            continue;
-                        }
+                // 如果 keypoint 包含置信度信息
+                if (keypoint.size() == 3) {
+                    float conf = keypoint[idx + 2]; // 获取当前点的置信度
+                    if (conf < 0.3) {
+                        allPointsValid = false; // 有任意一个点不满足条件
+
+                    // 删除 contours 的当前空组
+                    if (!contours.empty()) {
+                        contours.pop_back(); // 删除最后一个空组
                     }
-                    cv::Scalar color_k = isPose ? kptColorPalette[i] : cv::Scalar(0, 0,
-                                                                                  255);  // Default to red if not in pose mode
-                    cv::circle(img, cv::Point(x_coord, y_coord), radius, color_k, -1, cv::LINE_AA);
+
+                    break; // 直接退出循环
+                    
+                    }
                 }
             }
-            // draw lines
-            if (drawLines) {
-                for (int i = 0; i < skeleton.size(); i++) {
-                    const std::vector<int> &sk = skeleton[i];
-                    int idx1 = sk[0] - 1;
-                    int idx2 = sk[1] - 1;
+            
+            // draw points
+            // 如果所有点都满足条件，则处理这些点
+            if (allPointsValid) {
+                
+                // 将 conf 保留两位小数，乘以 100
+                int conf = static_cast<int>(res.conf * 100);
+                // 将 class_name 转换为整数，确保它是数字
+                int class_name_int = 0;
 
-                    int idx1_x_pos = idx1 * 3;
-                    int idx2_x_pos = idx2 * 3;
-
-                    int x1 = static_cast<int>(keypoint[idx1_x_pos]);
-                    int y1 = static_cast<int>(keypoint[idx1_x_pos + 1]);
-                    int x2 = static_cast<int>(keypoint[idx2_x_pos]);
-                    int y2 = static_cast<int>(keypoint[idx2_x_pos + 1]);
-
-                    float conf1 = keypoint[idx1_x_pos + 2];
-                    float conf2 = keypoint[idx2_x_pos + 2];
-
-                    // Check confidence thresholds
-                    if (conf1 < 0.3 || conf2 < 0.3) {
-                        continue;
-                    }
-
-                    // Check if positions are within bounds
-                    if (x1 % raw_image_shape.width == 0 || y1 % raw_image_shape.height == 0 || x1 < 0 || y1 < 0 ||
-                        x2 % raw_image_shape.width == 0 || y2 % raw_image_shape.height == 0 || x2 < 0 || y2 < 0) {
-                        continue;
-                    }
-
-                    // Draw a line between keypoints
-                    cv::Scalar color_limb = limbColorPalette[i];
-                    cv::line(img, cv::Point(x1, y1), cv::Point(x2, y2), color_limb, 2, cv::LINE_AA);
+                if (class_name.find("RR") != std::string::npos) {
+                    class_name = "0";
                 }
+                else if (class_name.find("RW") != std::string::npos) {
+                    class_name = "1";
+                }
+                else if (class_name.find("BR") != std::string::npos) {
+                    class_name = "2";
+                }
+                else if (class_name.find("BW") != std::string::npos) {
+                    class_name = "3";
+                }
+                else {
+                    class_name = "Unknown";  // 如果没有匹配
+                }
+
+                try {
+                    class_name_int = std::stoi(class_name);  // 将 label 转换为整数
+                } catch (const std::invalid_argument& e) {
+                    std::cerr << "Invalid argument: " << e.what() << " for label: " << class_name << std::endl;
+                } catch (const std::out_of_range& e) {
+                    std::cerr << "Out of range: " << e.what() << " for label: " << class_name << std::endl;
+                }
+
+                
+                // 将转换后的 label_int 和 conf 存储到 contours 中
+                contours.back().push_back(cv::Point(class_name_int, conf));  // label_int 用于 x 坐标，conf 用于 y 坐标
+
+                for (int i = 0; i < 5; i++) {
+                    int idx = i * 3;
+                    int x_coord = static_cast<int>(keypoint[idx]);
+                    int y_coord = static_cast<int>(keypoint[idx + 1]);
+
+                    // 检查坐标有效性
+                    if (x_coord % raw_image_shape.width != 0 && y_coord % raw_image_shape.height != 0) {
+                        // 将关键点坐标存入 contours
+                        contours.back().push_back(cv::Point(x_coord, 1080-y_coord));
+
+                        // 绘制关键点
+                        cv::Scalar color_k = isPose ? kptColorPalette[i] : cv::Scalar(0, 0, 255); 
+                        cv::circle(img, cv::Point(x_coord, y_coord), radius, color_k, -1, cv::LINE_AA);
+                    }
+                }
+            }
+
+
+
+            // // draw lines
+            // if (drawLines && allPointsValid) {
+            //     for (int i = 0; i < skeleton.size(); i++) {
+            //         const std::vector<int> &sk = skeleton[i];
+            //         int idx1 = sk[0] - 1;
+            //         int idx2 = sk[1] - 1;
+
+            //         int idx1_x_pos = idx1 * 3;
+            //         int idx2_x_pos = idx2 * 3;
+
+            //         int x1 = static_cast<int>(keypoint[idx1_x_pos]);
+            //         int y1 = static_cast<int>(keypoint[idx1_x_pos + 1]);
+            //         int x2 = static_cast<int>(keypoint[idx2_x_pos]);
+            //         int y2 = static_cast<int>(keypoint[idx2_x_pos + 1]);
+
+            //         float conf1 = keypoint[idx1_x_pos + 2];
+            //         float conf2 = keypoint[idx2_x_pos + 2];
+
+            //         // Check confidence thresholds
+            //         if (conf1 < 0.3 || conf2 < 0.3) {
+            //             continue;
+            //         }
+
+            //         // Check if positions are within bounds
+            //         if (x1 % raw_image_shape.width == 0 || y1 % raw_image_shape.height == 0 || x1 < 0 || y1 < 0 ||
+            //             x2 % raw_image_shape.width == 0 || y2 % raw_image_shape.height == 0 || x2 < 0 || y2 < 0) {
+            //             continue;
+            //         }
+
+            //         // Draw a line between keypoints
+            //         cv::Scalar color_limb = limbColorPalette[i];
+            //         cv::line(img, cv::Point(x1, y1), cv::Point(x2, y2), color_limb, 2, cv::LINE_AA);
+            //     }
             }
         }
     }
 
     // Combine the image and mask
-    addWeighted(img, 0.6, mask, 0.4, 0, img);
+    cv::addWeighted(img, 0.6, mask, 0.4, 0, img);
+
+    result_image = img;
 //    resize(img, img, img.size());
 //    resize(img, img, shape);
 //    // Show the image
@@ -315,108 +418,3 @@ void plot_results(cv::Mat img, std::vector<YoloResults>& results,
 //    cv::waitKey();
 }
 
-
-//调用视频/图片测试模型识别效果
-int main()
-{   
-    int flag = 0;
-    if(flag == 1){
-        std::string img_path = "test/test1.jpg";
-        const std::string& modelPath = "model/rm_buff_test.onnx"; // pose
-        fs::path imageFilePath(img_path);
-        fs::path newFilePath = imageFilePath.stem();
-        newFilePath += "-kpt-cpp";
-        newFilePath += imageFilePath.extension();
-        assert(newFilePath != imageFilePath);
-        std::cout << "newFilePath: " << newFilePath << std::endl;
-
-        const std::string& onnx_provider = OnnxProviders::CPU; // "cpu";
-        const std::string& onnx_logid = "yolov8_inference2";
-        float mask_threshold = 0.5f;  // in python it's 0.5 and you can see that at ultralytics/utils/ops.process_mask line 705 (ultralytics.__version__ == .160)
-        float conf_threshold = 0.30f;
-        float iou_threshold = 0.45f;  //  0.70f;
-        int conversion_code = cv::COLOR_BGR2RGB;
-        cv::Mat img = cv::imread(img_path, cv::IMREAD_UNCHANGED);
-        if (img.empty()) {
-            std::cerr << "Error: Unable to load image" << std::endl;
-            return 1;
-        }
-        AutoBackendOnnx model(modelPath.c_str(), onnx_logid.c_str(), onnx_provider.c_str());
-        std::vector<YoloResults> objs = model.predict_once(img, conf_threshold, iou_threshold, mask_threshold, conversion_code);
-        std::vector<cv::Scalar> colors = generateRandomColors(model.getNc(), model.getCh());
-        std::unordered_map<int, std::string> names = model.getNames();
-
-        std::vector<std::vector<float>> keypointsVector;
-        for (const YoloResults& result : objs) {
-            keypointsVector.push_back(result.keypoints);
-        }
-
-        cv::cvtColor(img, img, cv::COLOR_RGB2BGR);
-        cv::Size show_shape = img.size();  // cv::Size(1280, 720); // img.size()
-        plot_results(img, objs, colors, names, show_shape);
-        //    plot_masks(img, objs, colors, names);
-        cv::imshow("img", img);
-        cv::waitKey();
-        return -1;
-    }
-        
-
-    else if(flag == 0){
-        // video_detect
-        std::string video_path = "test/blue.MP4";//"test/red.MP4"
-        const std::string& modelPath = "model/rm_buff.onnx"; // pose
-        cv::VideoCapture cap(video_path);
-        if (!cap.isOpened()) {
-            std::cerr << "Error: Unable to open video file" << std::endl;
-            return 1;
-        }
-        const std::string& onnx_provider = OnnxProviders::CPU;
-        const std::string& onnx_logid = "yolov8_inference2";
-        float mask_threshold = 0.30f;
-        float conf_threshold = 0.30f;
-        float iou_threshold = 0.30f;
-        int conversion_code = cv::COLOR_BGR2RGB;
-
-        // 初始化模型
-        AutoBackendOnnx model(modelPath.c_str(), onnx_logid.c_str(), onnx_provider.c_str());
-
-        std::vector<cv::Scalar> colors = generateRandomColors(model.getNc(), model.getCh());
-        std::unordered_map<int, std::string> names = model.getNames();
-
-        cv::Mat frame;
-        while (true) {
-            // 读取每一帧
-            cap >> frame;
-            if (frame.empty()) {
-                std::cout << "Video processing finished!" << std::endl;
-                break;  // 视频处理完成
-            }
-
-            // 转换颜色空间
-            cv::cvtColor(frame, frame, conversion_code);
-
-            // 进行推理
-            std::vector<YoloResults> objs = model.predict_once(frame, conf_threshold, iou_threshold, mask_threshold, conversion_code);
-
-            // 绘制结果
-            cv::cvtColor(frame, frame, cv::COLOR_RGB2BGR);  // 转换回 BGR 以便显示
-            cv::Size show_shape = frame.size();  // 显示尺寸
-            plot_results(frame, objs, colors, names, show_shape);
-
-            // 显示结果
-            cv::imshow("Video Detection", frame);
-
-            // 如果按下 'q' 键，退出视频处理循环
-            if (cv::waitKey(30) == 'q') {
-                break;
-            }
-        }
-
-        cap.release();  // 释放视频资源
-        cv::destroyAllWindows();  // 销毁所有窗口
-
-        return 0;
-    }
-
-    
-}

@@ -12,7 +12,7 @@ if(NOT ONNXRUNTIME_ROOTDIR)
         set(ONNXRUNTIME_ROOTDIR "C:/Program Files (x86)/onnxruntime")
     else()
         # 非 Windows 系统下设置默认路径
-        set(ONNXRUNTIME_ROOTDIR "/home/qianli/onnxruntime")
+        set(ONNXRUNTIME_ROOTDIR "/home/qianli/onnxruntime-linux-x64-gpu-1.20.0")
     endif()
 endif()
 
@@ -73,7 +73,7 @@ add_library(${PROJECT_NAME} SHARED
   src/augment.cpp
   src/autobackend.cpp
   src/common.cpp
-  src/detect.cpp
+  src/plot.cpp
   src/onnx_model_base.cpp
   src/ops.cpp
 )

@@ -18,11 +18,8 @@
 #include "cv_bridge/cv_bridge.h"
 
 // rm_rune项目包含
-#include "rm_rune/onnx_model_base.h"
-#include "rm_rune/autobackend.h"
-#include "rm_rune/augment.h"
-#include "rm_rune/constants.h"
-#include "rm_rune/common.h"
+#include "rm_rune/inference.h"
+
 
 // 命名空间别名
 namespace fs = std::filesystem;

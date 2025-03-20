@@ -181,6 +181,8 @@ namespace qianli_rm_rune
         std::vector<std::vector<cv::Point>> contours;
         cv::Mat result_image; // 声明用于存储处理后图像的变量
 
+        DetectTest(rune_image)
+
         // 调用 plot_results 并传入 result_image
         contour_info_.plot_results(rune_image, objs, posePalette, names, rune_image.size(), contours, result_image);
 
