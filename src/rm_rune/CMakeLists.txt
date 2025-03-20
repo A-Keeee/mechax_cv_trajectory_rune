@@ -70,12 +70,9 @@ add_library(${PROJECT_NAME} SHARED
   src/configuration.cpp
   src/blade.cpp
   src/prediction.cpp
-  src/augment.cpp
-  src/autobackend.cpp
-  src/common.cpp
-  src/plot.cpp
-  src/onnx_model_base.cpp
-  src/ops.cpp
+  src/detect.cpp
+  src/data_process.cpp
+  src/inference.cpp
 )
 ament_target_dependencies(${PROJECT_NAME} rclcpp rclcpp_components sensor_msgs geometry_msgs cv_bridge OpenCV tf2 tf2_ros image_transport tf2_geometry_msgs)
 

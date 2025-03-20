@@ -29,7 +29,9 @@
 #include "power_rune.hpp"
 #include "blade.hpp"
 #include "prediction.hpp"
-#include "plot.hpp"
+#include "data_process.hpp"
+#include "detect.hpp"
+#include "inference.h"
 #include <image_transport/image_transport.hpp> // 新增
 
 namespace qianli_rm_rune
@@ -59,6 +61,7 @@ public:
     rclcpp::Time last_time_;
 
     // 配置和处理类
+    DETECT detector;
     Configuration cfg_;
     PowerRune power_rune_;
     ContourInfo contour_info_;
@@ -69,7 +72,10 @@ public:
     std::shared_ptr<tf2_ros::Buffer> tf2_buffer_;
     std::shared_ptr<tf2_ros::TransformListener> tf2_listener_;
 
-    std::unique_ptr<AutoBackendOnnx> model;
+
+    // 初始化模型
+    YOLO_V8* yoloDetector;
+    DL_INIT_PARAM params;
 
     // // 定时器用于延迟初始化 image_transport
     rclcpp::TimerBase::SharedPtr init_timer_;

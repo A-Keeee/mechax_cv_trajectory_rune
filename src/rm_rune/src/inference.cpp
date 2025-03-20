@@ -4,7 +4,7 @@
 #define benchmark
 #define min(a,b)            (((a) < (b)) ? (a) : (b))
 YOLO_V8::YOLO_V8() {
-
+    
 }
 
 
@@ -43,7 +43,8 @@ char* BlobFromImage(cv::Mat& iImg, T& iBlob) {
 
 
 char* YOLO_V8::PreProcess(cv::Mat& iImg, std::vector<int> iImgSize, cv::Mat& oImg)
-{
+{   
+    // std::cout << "0iImg.size():" << iImg.size() << std::endl;
     if (iImg.channels() == 3)
     {
         oImg = iImg.clone();
@@ -53,7 +54,8 @@ char* YOLO_V8::PreProcess(cv::Mat& iImg, std::vector<int> iImgSize, cv::Mat& oIm
     {
         cv::cvtColor(iImg, oImg, cv::COLOR_GRAY2RGB);
     }
-
+    // std::cout << "1iImg.size():" << iImg.size() << std::endl;
+    
     switch (modelType)
     {
     case YOLO_DETECT_V8:
@@ -61,11 +63,14 @@ char* YOLO_V8::PreProcess(cv::Mat& iImg, std::vector<int> iImgSize, cv::Mat& oIm
     case YOLO_DETECT_V8_HALF:
     case YOLO_POSE_V8_HALF://LetterBox
     case YOLO_ARMOR:
-    {
+    {   
         if (iImg.cols >= iImg.rows)
-        {
+        {   
+            // std::cout << "2iImg.size():" << iImg.size() << std::endl;
             resizeScales = iImg.cols / (float)iImgSize.at(0);
+            // std::cout <<    "resizeScales:" << resizeScales << std::endl;
             cv::resize(oImg, oImg, cv::Size(iImgSize.at(0), int(iImg.rows / resizeScales)));
+            // std::cout << "3iImg.size():" << iImg.size() << std::endl;
         }
         else
         {
@@ -88,6 +93,7 @@ char* YOLO_V8::PreProcess(cv::Mat& iImg, std::vector<int> iImgSize, cv::Mat& oIm
         break;
     }
     }
+
     return RET_OK;
 }
 
@@ -109,6 +115,9 @@ char* YOLO_V8::CreateSession(DL_INIT_PARAM& iParams) {
         imgSize = iParams.imgSize;
         modelType = iParams.modelType;
         cudaEnable = iParams.cudaEnable;
+
+        // std::cout << "debug" << rectConfidenceThreshold <<iouThreshold<<imgSize[0]<<imgSize[1]<<modelType<<cudaEnable<<std::endl;
+
         env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "Yolo");
         Ort::SessionOptions sessionOption;
         if (iParams.cudaEnable)
@@ -178,19 +187,24 @@ double sigmoid(double x)
 
 
 char* YOLO_V8::RunSession(cv::Mat& iImg, std::vector<DL_RESULT>& oResult) {
+
 #ifdef benchmark
     clock_t starttime_1 = clock();
 #endif // benchmark
 
     char* Ret = RET_OK;
     cv::Mat processedImg;
-    PreProcess(iImg, imgSize, processedImg);
+    // std::cout << "imgSize" << imgSize[0]<< imgSize[1] << std::endl;
+
+    PreProcess(iImg, imgSize, processedImg);//debug
+
     if (modelType < 4)
     {
         float* blob = new float[processedImg.total() * 3];
         BlobFromImage(processedImg, blob);
         std::vector<int64_t> inputNodeDims = { 1, 3, imgSize.at(0), imgSize.at(1) };
-        TensorProcess(starttime_1, iImg, blob, inputNodeDims, oResult);
+        TensorProcess(starttime_1, iImg, blob, inputNodeDims, oResult);\
+
     }
     else
     {
@@ -393,13 +407,9 @@ char* YOLO_V8::TensorProcess(clock_t& starttime_1, cv::Mat& iImg, N& blob, std::
         }
 
         else if(modelType == YOLO_POSE){
-            std::cout << "YOLO_POSE" << std::endl;
+            // std::cout << "YOLO_POSE" << std::endl;
             rawData = rawData.t();
             float* data = (float*)rawData.data;
-
-            cv::waitKey(0);
-
-
             for (int i = 0; i < strideNum; ++i)
             {
                 float* classesScores = data + 4;
@@ -472,11 +482,11 @@ char* YOLO_V8::TensorProcess(clock_t& starttime_1, cv::Mat& iImg, N& blob, std::
         double post_process_time = (double)(starttime_4 - starttime_3) / CLOCKS_PER_SEC * 1000;
         if (cudaEnable)
         {
-            std::cout << "[YOLO_V8(CUDA)]: " << pre_process_time << "ms pre-process, " << process_time << "ms inference, " << post_process_time << "ms post-process." << std::endl;
+            // std::cout << "[YOLO_V8(CUDA)]: " << pre_process_time << "ms pre-process, " << process_time << "ms inference, " << post_process_time << "ms post-process." << std::endl;
         }
         else
         {
-            std::cout << "[YOLO_V8(CPU)]: " << pre_process_time << "ms pre-process, " << process_time << "ms inference, " << post_process_time << "ms post-process." << std::endl;
+            // std::cout << "[YOLO_V8(CPU)]: " << pre_process_time << "ms pre-process, " << process_time << "ms inference, " << post_process_time << "ms post-process." << std::endl;
         }
 #endif // benchmark
 

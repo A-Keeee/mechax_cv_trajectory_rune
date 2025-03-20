@@ -35,13 +35,8 @@ namespace qianli_rm_rune
                 cam_info_sub_.reset();
             });
 
-        // 调用神经网络识别
-        const std::string& modelPath = "/home/qianli/fyk/mechax_cv_trajectory_rune/src/rm_rune/model/rm_buff.onnx"; // 确保路径正确
-        const std::string& onnx_provider = OnnxProviders::CPU; // "cpu";CPUExecutionProvider
-        const std::string& onnx_logid = "yolov8_inference2";
-
-        // 初始化模型
-        model = std::make_unique<AutoBackendOnnx>(modelPath.c_str(), onnx_logid.c_str(), onnx_provider.c_str());
+        yoloDetector = new YOLO_V8;
+        detector.DetectTest(yoloDetector);
         RCLCPP_INFO(get_logger(), "model loaded");
 
 
@@ -85,6 +80,9 @@ namespace qianli_rm_rune
             }
         );
     }
+
+
+
 
         /**
      * 计算旋转后的点 B'
@@ -136,7 +134,6 @@ namespace qianli_rm_rune
     */
     void RuneNode::rune_image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
     {   
-
         // 新增帧率计算逻辑
         auto current_time = this->now();
         frame_count_++;
@@ -156,6 +153,11 @@ namespace qianli_rm_rune
             // 使用cv_bridge将ROS图像消息转换为OpenCV图像
             cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::RGB8);
             rune_image = cv_ptr->image;
+            // 添加图像空指针检查
+            if (rune_image.empty()) {
+                RCLCPP_ERROR(get_logger(), "Received empty image!");
+                return;
+            }
         }
         catch (cv_bridge::Exception & e)
         {
@@ -169,30 +171,33 @@ namespace qianli_rm_rune
         float iou_threshold = 0.80f;
         int conversion_code = cv::COLOR_RGB2BGR;
 
-        std::vector<cv::Scalar> posePalette = generateRandomColors(model->getNc(), model->getCh());
-        std::unordered_map<int, std::string> names = model->getNames();
 
         // 转换颜色空间
         cv::cvtColor(rune_image, rune_image, conversion_code);
 
-        // 进行推理
-        std::vector<YoloResults> objs = model->predict_once(rune_image, conf_threshold, iou_threshold, mask_threshold, conversion_code);
 
-        std::vector<std::vector<cv::Point>> contours;
+        std::vector<std::vector<cv::Point2f>> contours;
         cv::Mat result_image; // 声明用于存储处理后图像的变量
 
-        DetectTest(rune_image)
+        
+        // std::cout <<"debugbegin"<<std::endl;
+        detector.Detector(yoloDetector, rune_image, result_image, contours);
 
-        // 调用 plot_results 并传入 result_image
-        contour_info_.plot_results(rune_image, objs, posePalette, names, rune_image.size(), contours, result_image);
+
+
+        
+        // // 调用 plot_results 并传入 result_image
+        // contour_info_.plot_results(rune_image, objs, posePalette, names, rune_image.size(), contours, result_image);
+        // std::cout <<"debugend"<<std::endl;
+
 
 
         // 将处理后的图像转换为 ROS 消息并发布
         if (it_ && result_image_pub_)
         {   
             //debug
-            // auto result_msg = cv_bridge::CvImage(msg->header, "rgb8", result_image).toImageMsg();
-            // result_image_pub_.publish(result_msg); // 使用 image_transport 发布
+            auto result_msg = cv_bridge::CvImage(msg->header, "rgb8", result_image).toImageMsg();
+            result_image_pub_.publish(result_msg); // 使用 image_transport 发布
             // RCLCPP_INFO(get_logger(), "Published result_image to /rune/result_image");
         }
         else

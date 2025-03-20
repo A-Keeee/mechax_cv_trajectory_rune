@@ -1,26 +1,34 @@
-#include "detece.hpp"
+#include "detect.hpp"
 
-void Detector(YOLO_V8*& p , cv::Mat img) {
+void DETECT::Detector(YOLO_V8*& p , cv::Mat img, cv::Mat result_img, std::vector<std::vector<cv::Point2f>>& contours) {
+
+    result_img = img.clone();
+
     _DL_INIT_PARAM params;
 
+
     std::vector<DL_RESULT> res;
+    
+    // std::cout << "imgSize" << p->imgSize[0]<< p->imgSize[1] << std::endl;
+
     p->RunSession(img, res);
 
+
     for (auto& re : res)
-    {
+    {   
         cv::RNG rng(cv::getTickCount());
         cv::Scalar color(rng.uniform(0, 256), rng.uniform(0, 256), rng.uniform(0, 256));
 
 
         if (params.modelType == YOLO_DETECT_V8){
-            cv::rectangle(img, re.box, color, 3);
+            cv::rectangle(result_img, re.box, color, 3);
             float confidence = floor(100 * re.confidence) / 100;
-            std::cout << std::fixed << std::setprecision(2);
+            // std::cout << std::fixed << std::setprecision(2);
             std::string label = p->classes[re.classId] + " " +
             std::to_string(confidence).substr(0, std::to_string(confidence).size() - 4);
 
             cv::rectangle(
-                img,
+                result_img,
                 cv::Point(re.box.x, re.box.y - 25),
                 cv::Point(re.box.x + label.length() * 15, re.box.y),
                 color,
@@ -29,7 +37,7 @@ void Detector(YOLO_V8*& p , cv::Mat img) {
             
 
             cv::putText(
-                img,
+                result_img,
                 label,
                 cv::Point(re.box.x, re.box.y - 5),
                 cv::FONT_HERSHEY_SIMPLEX,
@@ -40,12 +48,12 @@ void Detector(YOLO_V8*& p , cv::Mat img) {
         }
         else if (params.modelType == YOLO_ARMOR){
             float confidence = floor(100 * re.confidence) / 100;
-            std::cout << std::fixed << std::setprecision(2);
+            // std::cout << std::fixed << std::setprecision(2);
             std::string label = p->classes[re.classId] + " " +
             std::to_string(confidence).substr(0, std::to_string(confidence).size() - 4);
 
             cv::rectangle(
-                img,
+                result_img,
                 cv::Point(re.box.x, re.box.y - 25),
                 cv::Point(re.box.x + label.length() * 15, re.box.y),
                 color,
@@ -54,7 +62,7 @@ void Detector(YOLO_V8*& p , cv::Mat img) {
             
 
             cv::putText(
-                img,
+                result_img,
                 label,
                 cv::Point(re.box.x, re.box.y - 5),
                 cv::FONT_HERSHEY_SIMPLEX,
@@ -63,20 +71,20 @@ void Detector(YOLO_V8*& p , cv::Mat img) {
                 2
             );
 
-            cv::line(img, re.keyPoints[0], re.keyPoints[1], color, 3);
-            cv::line(img, re.keyPoints[1], re.keyPoints[2], color, 3);
-            cv::line(img, re.keyPoints[2], re.keyPoints[3], color, 3);
-            cv::line(img, re.keyPoints[3], re.keyPoints[0], color, 3);
+            cv::line(result_img, re.keyPoints[0], re.keyPoints[1], color, 3);
+            cv::line(result_img, re.keyPoints[1], re.keyPoints[2], color, 3);
+            cv::line(result_img, re.keyPoints[2], re.keyPoints[3], color, 3);
+            cv::line(result_img, re.keyPoints[3], re.keyPoints[0], color, 3);
         }
         else if (params.modelType == YOLO_POSE){
-            cv::rectangle(img, re.box, color, 3);
+            cv::rectangle(result_img, re.box, color, 3);
             float confidence = floor(100 * re.confidence) / 100;
             std::cout << std::fixed << std::setprecision(2);
             std::string label = p->classes[re.classId] + " " +
             std::to_string(confidence).substr(0, std::to_string(confidence).size() - 4);
 
             cv::rectangle(
-                img,
+                result_img,
                 cv::Point(re.box.x, re.box.y - 25),
                 cv::Point(re.box.x + label.length() * 15, re.box.y),
                 color,
@@ -85,7 +93,7 @@ void Detector(YOLO_V8*& p , cv::Mat img) {
             
 
             cv::putText(
-                img,
+                result_img,
                 label,
                 cv::Point(re.box.x, re.box.y - 5),
                 cv::FONT_HERSHEY_SIMPLEX,
@@ -94,20 +102,30 @@ void Detector(YOLO_V8*& p , cv::Mat img) {
                 2
             );
 
-            cv::line(img, re.keyPoints[0], re.keyPoints[1], color, 3);
-            cv::line(img, re.keyPoints[1], re.keyPoints[2], color, 3);
-            cv::line(img, re.keyPoints[2], re.keyPoints[3], color, 3);
-            cv::line(img, re.keyPoints[3], re.keyPoints[4], color, 3);
-            cv::line(img, re.keyPoints[4], re.keyPoints[0], color, 3);
+            cv::line(result_img, re.keyPoints[0], re.keyPoints[1], color, 3);
+            cv::line(result_img, re.keyPoints[1], re.keyPoints[2], color, 3);
+            cv::line(result_img, re.keyPoints[2], re.keyPoints[3], color, 3);
+            cv::line(result_img, re.keyPoints[3], re.keyPoints[4], color, 3);
+            cv::line(result_img, re.keyPoints[4], re.keyPoints[0], color, 3);
+
         }
+        contours.emplace_back(); // 在 contours 中添加一个新的空的轮廓
+        contours.back().push_back(cv::Point2f(re.classId,floor(100 * re.confidence) / 100));
+        // std::cout << "debug" << std::endl;
+        for (const auto& pt : re.keyPoints) {
+            contours.back().push_back(cv::Point2f(pt.x, pt.y));
+        }
+        // std::cout << "debug" << std::endl;
+
+
     }
 }
 
 
-int ReadCocoYaml(YOLO_V8*& p) {
+int DETECT::ReadCocoYaml(YOLO_V8*& p) {
     _DL_INIT_PARAM params;
     // Open the YAML file
-    std::ifstream file("src/classes.yaml");
+    std::ifstream file("/home/qianli/fyk/mechax_cv_trajectory_rune/src/rm_rune/src/classes.yaml");
     if (!file.is_open())
     {
         std::cerr << "Failed to open file" << std::endl;
@@ -166,19 +184,18 @@ int ReadCocoYaml(YOLO_V8*& p) {
     return 0;
 }
 
-
-void DetectTest(cv::Mat img)
+void DETECT::DetectTest(YOLO_V8* yoloDetector)
 {
-    YOLO_V8* yoloDetector = new YOLO_V8;
-    ReadCocoYaml(yoloDetector);
+    DETECT::ReadCocoYaml(yoloDetector);
     DL_INIT_PARAM params;
     params.rectConfidenceThreshold = 0.6;
     params.iouThreshold = 0.5;
+    params.modelType = YOLO_POSE;
     if (params.modelType == YOLO_ARMOR){
-        params.modelPath = "model/armor.onnx";
+        params.modelPath = "/home/qianli/fyk/mechax_cv_trajectory_rune/src/rm_rune/model/rm_buff.onnx";
     }
     else if (params.modelType == YOLO_POSE){
-        params.modelPath = "model/rm_buff.onnx";
+        params.modelPath = "/home/qianli/fyk/mechax_cv_trajectory_rune/src/rm_rune/model/rm_buff.onnx";
     }
 
 
@@ -194,13 +211,16 @@ void DetectTest(cv::Mat img)
 
 #else
     // CPU inference
-    params.modelType = YOLO_DETECT_V8;
+    // params.modelType = YOLO_DETECT_V8;
     params.cudaEnable = false;
 
 #endif
+    // std::cout << "imgSize" << std::endl;
     yoloDetector->CreateSession(params);
-    Detector(yoloDetector , img);
+    // std::cout << "imgSize" << yoloDetector->imgSize[0]<< yoloDetector->imgSize[1] << std::endl;
+    // Detector(yoloDetector);
 }
+
 
 
 

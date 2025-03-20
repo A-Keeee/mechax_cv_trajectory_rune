@@ -35,8 +35,8 @@ class ContourInfo
 {
 public:
     ContourInfo();
-    ContourInfo(const std::vector<cv::Point>& contour);
-    void setContour(const std::vector<cv::Point>& contour);
+    ContourInfo(const std::vector<cv::Point2f>& contour);
+    void setContour(const std::vector<cv::Point2f>& contour);
 
     // 计算面积
     double getArea();
@@ -49,17 +49,9 @@ public:
     // 计算Hu矩的偏差
     float hu_moments_deviation(cv::Mat hu_moments, cv::Mat reference);
 
-    // 绘制检测到的掩膜
-    void plot_masks(cv::Mat img, std::vector<YoloResults>& result, std::vector<cv::Scalar> color,
-                    std::unordered_map<int, std::string>& names);
-
-    // 绘制检测到的关键点
-    void plot_keypoints(cv::Mat& image, const std::vector<YoloResults>& results, const cv::Size& shape);
 
     // 绘制检测结果，包括边界框、关键点和掩膜
-    void plot_results(cv::Mat img, std::vector<YoloResults>& results,
-                    std::vector<cv::Scalar> color, std::unordered_map<int, std::string>& names,
-                    const cv::Size& shape, std::vector<std::vector<cv::Point>>& contours,cv::Mat& result_image);
+    void data_results(std::vector<std::vector<cv::Point2f>>& contours);
 
 
     // 成员变量

@@ -6,9 +6,11 @@
 
 #include "opencv2/opencv.hpp"
 #include "cv_bridge/cv_bridge.h"
-// #include "contour_info.hpp" // Assume this is the header file for ContourInfo class
+#include "contour_info.hpp" // Assume this is the header file for ContourInfo class
 #include "detect.hpp" // Assume this is the header file for ContourInfo class
 #include "configuration.hpp" // Assume this contains cfg with configurations like ref_hu, hu_dev_threshold, min_area
+#include "blade.hpp" // Assume this is the header file for Blade class
+#include "data_process.hpp" // Assume this is the header file for DataProcess class
 
 class PowerRune
 {

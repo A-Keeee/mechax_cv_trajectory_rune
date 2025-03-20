@@ -7,6 +7,7 @@
 
 // #include "contour_info.hpp"
 #include "detect.hpp"
+#include "data_process.hpp"
 #include "configuration.hpp"
 
 /*@ivar contour: 输入的轮廓信息。

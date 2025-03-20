@@ -83,7 +83,7 @@ public:
 
     std::vector<std::string> classes{};
 
-private:
+
     Ort::Env env;
     Ort::Session* session;
     bool cudaEnable;
