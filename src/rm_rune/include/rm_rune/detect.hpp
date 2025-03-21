@@ -62,7 +62,7 @@ public:
     // 绘制检测结果，包括边界框、关键点和掩膜
     void plot_results(cv::Mat img, std::vector<YoloResults>& results,
                     std::vector<cv::Scalar> color, std::unordered_map<int, std::string>& names,
-                    const cv::Size& shape, std::vector<std::vector<cv::Point>>& contours,cv::Mat& result_image);
+                    const cv::Size& shape, std::vector<std::vector<cv::Point>>& contours);
 
 
     // 成员变量

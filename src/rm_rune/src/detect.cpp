@@ -223,14 +223,13 @@ void ContourInfo::plot_keypoints(cv::Mat& image, const std::vector<YoloResults>&
 
 void ContourInfo::plot_results(cv::Mat img, std::vector<YoloResults>& results,
                   std::vector<cv::Scalar> color, std::unordered_map<int, std::string>& names,
-                  const cv::Size& shape ,std::vector<std::vector<cv::Point>>& contours,
-                  cv::Mat& result_image
+                  const cv::Size& shape ,std::vector<std::vector<cv::Point>>& contours
+                //   cv::Mat& result_image
                   ) {
     
     
-    cv::Mat mask = img.clone();
 
-    int radius = 5;
+    int radius = 10;
     bool drawLines = true;
 
     auto raw_image_shape = img.size();
@@ -256,7 +255,7 @@ void ContourInfo::plot_results(cv::Mat img, std::vector<YoloResults>& results,
         int color_num = res.class_idx;
 
         // Draw bounding box
-        rectangle(img, res.bbox, color[res.class_idx], 2);
+        // rectangle(img, res.bbox, color[res.class_idx], 2);
 
         // Try to get the class name corresponding to the given class_idx
         std::string class_name;
@@ -270,10 +269,6 @@ void ContourInfo::plot_results(cv::Mat img, std::vector<YoloResults>& results,
             class_name = std::to_string(res.class_idx);
         }
 
-        // Draw mask if available
-        if (res.mask.rows && res.mask.cols > 0) {
-            mask(res.bbox).setTo(color[res.class_idx], res.mask);
-        }
 
         // Create label
         std::stringstream labelStream;
@@ -365,56 +360,54 @@ void ContourInfo::plot_results(cv::Mat img, std::vector<YoloResults>& results,
                         // 将关键点坐标存入 contours
                         contours.back().push_back(cv::Point(x_coord, 1080-y_coord));
 
-                        // 绘制关键点
-                        cv::Scalar color_k = isPose ? kptColorPalette[i] : cv::Scalar(0, 0, 255); 
-                        cv::circle(img, cv::Point(x_coord, y_coord), radius, color_k, -1, cv::LINE_AA);
+                        // // 绘制关键点
+                        // cv::Scalar color_k = isPose ? kptColorPalette[i] : cv::Scalar(0, 0, 255); 
+                        // cv::circle(img, cv::Point(x_coord, y_coord), radius, color_k, -1, cv::LINE_AA);
                     }
                 }
             }
 
 
 
-            // draw lines
-            if (drawLines && allPointsValid) {
-                for (int i = 0; i < skeleton.size(); i++) {
-                    const std::vector<int> &sk = skeleton[i];
-                    int idx1 = sk[0] - 1;
-                    int idx2 = sk[1] - 1;
+            // // draw lines
+            // if (drawLines && allPointsValid) {
+            //     for (int i = 0; i < skeleton.size(); i++) {
+            //         const std::vector<int> &sk = skeleton[i];
+            //         int idx1 = sk[0] - 1;
+            //         int idx2 = sk[1] - 1;
 
-                    int idx1_x_pos = idx1 * 3;
-                    int idx2_x_pos = idx2 * 3;
+            //         int idx1_x_pos = idx1 * 3;
+            //         int idx2_x_pos = idx2 * 3;
 
-                    int x1 = static_cast<int>(keypoint[idx1_x_pos]);
-                    int y1 = static_cast<int>(keypoint[idx1_x_pos + 1]);
-                    int x2 = static_cast<int>(keypoint[idx2_x_pos]);
-                    int y2 = static_cast<int>(keypoint[idx2_x_pos + 1]);
+            //         int x1 = static_cast<int>(keypoint[idx1_x_pos]);
+            //         int y1 = static_cast<int>(keypoint[idx1_x_pos + 1]);
+            //         int x2 = static_cast<int>(keypoint[idx2_x_pos]);
+            //         int y2 = static_cast<int>(keypoint[idx2_x_pos + 1]);
 
-                    float conf1 = keypoint[idx1_x_pos + 2];
-                    float conf2 = keypoint[idx2_x_pos + 2];
+            //         float conf1 = keypoint[idx1_x_pos + 2];
+            //         float conf2 = keypoint[idx2_x_pos + 2];
 
-                    // Check confidence thresholds
-                    if (conf1 < 0.3 || conf2 < 0.3) {
-                        continue;
-                    }
+            //         // Check confidence thresholds
+            //         if (conf1 < 0.3 || conf2 < 0.3) {
+            //             continue;
+            //         }
 
-                    // Check if positions are within bounds
-                    if (x1 % raw_image_shape.width == 0 || y1 % raw_image_shape.height == 0 || x1 < 0 || y1 < 0 ||
-                        x2 % raw_image_shape.width == 0 || y2 % raw_image_shape.height == 0 || x2 < 0 || y2 < 0) {
-                        continue;
-                    }
+            //         // Check if positions are within bounds
+            //         if (x1 % raw_image_shape.width == 0 || y1 % raw_image_shape.height == 0 || x1 < 0 || y1 < 0 ||
+            //             x2 % raw_image_shape.width == 0 || y2 % raw_image_shape.height == 0 || x2 < 0 || y2 < 0) {
+            //             continue;
+            //         }
 
-                    // Draw a line between keypoints
-                    cv::Scalar color_limb = limbColorPalette[i];
-                    cv::line(img, cv::Point(x1, y1), cv::Point(x2, y2), color_limb, 2, cv::LINE_AA);
-                }
-            }
+            //         // Draw a line between keypoints
+            //         cv::Scalar color_limb = limbColorPalette[i];
+            //         cv::line(img, cv::Point(x1, y1), cv::Point(x2, y2), color_limb, 5, cv::LINE_AA);
+            //     }
+            // }
         }
     }
 
-    // Combine the image and mask
-    cv::addWeighted(img, 0.6, mask, 0.4, 0, img);
 
-    result_image = img;
+    // result_image = img;
 //    resize(img, img, img.size());
 //    resize(img, img, shape);
 //    // Show the image

@@ -47,8 +47,8 @@ public:
 
     // 发布者
     rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr rune_pose_pub_;
-    std::unique_ptr<image_transport::ImageTransport> it_; // 修改为 unique_ptr
-    image_transport::Publisher result_image_pub_; // 修改类型为 image_transport::Publisher
+    // std::unique_ptr<image_transport::ImageTransport> it_; // 修改为 unique_ptr
+    // image_transport::Publisher result_image_pub_; // 修改类型为 image_transport::Publisher
 
     // 订阅者
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr rune_image_sub_;

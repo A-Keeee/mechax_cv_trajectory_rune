@@ -67,23 +67,23 @@ namespace qianli_rm_rune
 
         //debug
         // 创建一次性定时器，用于延迟初始化 image_transport
-        init_timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(100), // 延迟时间，可以根据需要调整
-            [this]() {
-                try {
-                    // 初始化 image_transport::ImageTransport，传递 shared_ptr<Node>
-                    it_ = std::make_unique<image_transport::ImageTransport>(shared_from_this());
-                    result_image_pub_ = it_->advertise("rune/result_image", 10);
-                    RCLCPP_INFO(get_logger(), "Initialized image_transport publisher for /rune/result_image");
+        // init_timer_ = this->create_wall_timer(
+        //     std::chrono::milliseconds(100), // 延迟时间，可以根据需要调整
+        //     [this]() {
+        //         try {
+        //             // 初始化 image_transport::ImageTransport，传递 shared_ptr<Node>
+        //             it_ = std::make_unique<image_transport::ImageTransport>(shared_from_this());
+        //             result_image_pub_ = it_->advertise("rune/result_image", 10);
+        //             RCLCPP_INFO(get_logger(), "Initialized image_transport publisher for /rune/result_image");
 
-                    // 取消定时器，因为只需要初始化一次
-                    init_timer_->cancel();
-                }
-                catch (const std::bad_weak_ptr & e) {
-                    RCLCPP_ERROR(get_logger(), "Failed to initialize ImageTransport: %s", e.what());
-                }
-            }
-        );
+        //             // 取消定时器，因为只需要初始化一次
+        //             init_timer_->cancel();
+        //         }
+        //         catch (const std::bad_weak_ptr & e) {
+        //             RCLCPP_ERROR(get_logger(), "Failed to initialize ImageTransport: %s", e.what());
+        //         }
+        //     }
+        // );
     }
 
         /**
@@ -175,28 +175,43 @@ namespace qianli_rm_rune
         // 转换颜色空间
         cv::cvtColor(rune_image, rune_image, conversion_code);
 
+        // roi
+        cv::Mat rune_image_roi;
+        
+        int roi_width = 640;
+        int roi_height = 640;
+
+        int start_x = (1440-roi_width)/2;
+        int start_y = (1080-roi_height)/2;
+        cv::Rect roi(start_x, start_y, roi_width, roi_height);
+        rune_image_roi = rune_image(roi);
+        
+        // cv::imshow("rune_image_roi", rune_image_roi);
+        // cv::waitKey(1);
+
+
         // 进行推理
-        std::vector<YoloResults> objs = model->predict_once(rune_image, conf_threshold, iou_threshold, mask_threshold, conversion_code);
+        std::vector<YoloResults> objs = model->predict_once(rune_image_roi, conf_threshold, iou_threshold, mask_threshold, conversion_code);
 
         std::vector<std::vector<cv::Point>> contours;
-        cv::Mat result_image; // 声明用于存储处理后图像的变量
+        // cv::Mat result_image; // 声明用于存储处理后图像的变量
 
         // 调用 plot_results 并传入 result_image
-        contour_info_.plot_results(rune_image, objs, posePalette, names, rune_image.size(), contours, result_image);
+        contour_info_.plot_results(rune_image_roi, objs, posePalette, names, rune_image_roi.size(), contours);
 
 
-        // 将处理后的图像转换为 ROS 消息并发布
-        if (it_ && result_image_pub_)
-        {   
-            //debug
-            // auto result_msg = cv_bridge::CvImage(msg->header, "rgb8", result_image).toImageMsg();
-            // result_image_pub_.publish(result_msg); // 使用 image_transport 发布
-            // RCLCPP_INFO(get_logger(), "Published result_image to /rune/result_image");
-        }
-        else
-        {
-            RCLCPP_WARN(get_logger(), "ImageTransport not initialized yet. Skipping image publish.");
-        }
+        // // 将处理后的图像转换为 ROS 消息并发布
+        // if (it_ && result_image_pub_)
+        // {   
+        //     //debug
+        //     // auto result_msg = cv_bridge::CvImage(msg->header, "rgb8", result_image).toImageMsg();
+        //     // result_image_pub_.publish(result_msg); // 使用 image_transport 发布
+        //     // RCLCPP_INFO(get_logger(), "Published result_image to /rune/result_image");
+        // }
+        // else
+        // {
+        //     RCLCPP_WARN(get_logger(), "ImageTransport not initialized yet. Skipping image publish.");
+        // }
 
 
 
@@ -211,7 +226,7 @@ namespace qianli_rm_rune
 
 
         std::vector<cv::Point2f> rune_imagePoints = {
-            {contours[0][1].x,contours[0][1].y },  // p1
+            {contours[0][1].x,contours[0][1].y},  // p1
             {contours[0][2].x,contours[0][2].y},  // p2
             {contours[0][4].x,contours[0][4].y},  // p4
             {contours[0][5].x,contours[0][5].y}   // p5
