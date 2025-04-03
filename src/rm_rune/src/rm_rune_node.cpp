@@ -36,8 +36,8 @@ namespace qianli_rm_rune
             });
 
         // 调用神经网络识别
-        const std::string& modelPath = "/home/fyk/fyk/mechax_cv_trajectory_rune/src/rm_rune/model/rm_buff.onnx"; // 确保路径正确
-        const std::string& onnx_provider = OnnxProviders::CUDA; // "cpu";CPUExecutionProvider
+        const std::string& modelPath = "/home/fyk/fyk/mechax_cv_trajectory_rune/src/rm_rune/model/buff320.onnx"; // 确保路径正确
+        const std::string& onnx_provider = OnnxProviders::CPU; // "cpu";CPUExecutionProvider
         const std::string& onnx_logid = "yolov8_inference2";
 
         // 初始化模型
