@@ -37,11 +37,14 @@ namespace qianli_rm_rune
 
         // 调用神经网络识别
         const std::string& modelPath = "/home/fyk/fyk/mechax_cv_trajectory_rune/src/rm_rune/model/buff320.onnx"; // 确保路径正确
-        const std::string& onnx_provider = OnnxProviders::CPU; // "cpu";CPUExecutionProvider
-        const std::string& onnx_logid = "yolov8_inference2";
+        // const std::string& onnx_provider = OnnxProviders::CPU; // "cpu";CPUExecutionProvider
+        // const std::string& onnx_logid = "yolov8_inference2";
 
-        // 初始化模型
-        model = std::make_unique<AutoBackendOnnx>(modelPath.c_str(), onnx_logid.c_str(), onnx_provider.c_str());
+        // // 初始化模型
+        // model = std::make_unique<AutoBackendOnnx>(modelPath.c_str(), onnx_logid.c_str(), onnx_provider.c_str());
+        const float confidence_threshold = 0.5;
+        const float NMS_threshold = 0.5;
+        yolo::Inference inference(modelPath, cv::Size(640, 640), confidence_threshold, NMS_threshold);
         RCLCPP_INFO(get_logger(), "model loaded");
 
 
@@ -176,13 +179,16 @@ namespace qianli_rm_rune
         cv::cvtColor(rune_image, rune_image, conversion_code);
 
         // 进行推理
-        std::vector<YoloResults> objs = model->predict_once(rune_image, conf_threshold, iou_threshold, mask_threshold, conversion_code);
+        // std::vector<YoloResults> objs = model->predict_once(rune_image, conf_threshold, iou_threshold, mask_threshold, conversion_code);
+
+        inference.RunInference(rune_image);
 
         std::vector<std::vector<cv::Point>> contours;
         cv::Mat result_image; // 声明用于存储处理后图像的变量
 
-        // 调用 plot_results 并传入 result_image
-        contour_info_.plot_results(rune_image, objs, posePalette, names, rune_image.size(), contours, result_image);
+        result_image = rune_image.clone(); // 克隆原始图像以便后续处理
+        contours = inference.contours; // 获取检测到的轮廓
+
 
 
         // 将处理后的图像转换为 ROS 消息并发布

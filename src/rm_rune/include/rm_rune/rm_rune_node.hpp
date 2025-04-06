@@ -32,6 +32,7 @@
 #include "prediction.hpp"
 #include "constants.h"
 #include "detect.hpp"
+#include "openvino_detect.hpp"
 #include <image_transport/image_transport.hpp> // 新增
 
 namespace qianli_rm_rune
@@ -63,6 +64,7 @@ public:
     // 配置和处理类
     Configuration cfg_;
     PowerRune power_rune_;
+    yolo::Inference inference;
     ContourInfo contour_info_;
     Prediction predictor;
     std::vector<ContourInfo> contours_info_;
