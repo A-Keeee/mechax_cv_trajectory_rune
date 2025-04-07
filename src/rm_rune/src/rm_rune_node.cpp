@@ -7,7 +7,13 @@ namespace qianli_rm_rune
 {
     RuneNode::RuneNode(const rclcpp::NodeOptions & options) : Node("rm_rune_node", options),
     frame_count_(0),
-    last_time_(this->now())
+    last_time_(this->now()),
+    inference(  // ✅ 在初始化列表中构造对象
+        "/home/mechax/fyk/mechax_cv_trajectory_rune_openvino/src/rm_rune/model/buff480.onnx", // 模型路径
+        cv::Size(480, 480),          // 输入尺寸
+        0.5f,   // 置信度阈值
+        0.5f   // NMS阈值
+    ) 
     
     {
         // 在控制台输出节点启动信息
@@ -36,15 +42,15 @@ namespace qianli_rm_rune
             });
 
         // 调用神经网络识别
-        const std::string& modelPath = "/home/fyk/fyk/mechax_cv_trajectory_rune/src/rm_rune/model/buff320.onnx"; // 确保路径正确
         // const std::string& onnx_provider = OnnxProviders::CPU; // "cpu";CPUExecutionProvider
         // const std::string& onnx_logid = "yolov8_inference2";
 
         // // 初始化模型
         // model = std::make_unique<AutoBackendOnnx>(modelPath.c_str(), onnx_logid.c_str(), onnx_provider.c_str());
-        const float confidence_threshold = 0.5;
-        const float NMS_threshold = 0.5;
-        yolo::Inference inference(modelPath, cv::Size(640, 640), confidence_threshold, NMS_threshold);
+        // const std::string& modelPath = "/home/fyk/fyk/mechax_cv_trajectory_rune/src/rm_rune/model/buff320.onnx"; // 确保路径正确
+        // const float confidence_threshold = 0.5;
+        // const float NMS_threshold = 0.5;
+        // inference(modelPath, cv::Size(640, 640), confidence_threshold, NMS_threshold);
         RCLCPP_INFO(get_logger(), "model loaded");
 
 
@@ -139,7 +145,6 @@ namespace qianli_rm_rune
     */
     void RuneNode::rune_image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
     {   
-
         // 新增帧率计算逻辑
         auto current_time = this->now();
         frame_count_++;
@@ -172,8 +177,8 @@ namespace qianli_rm_rune
         float iou_threshold = 0.80f;
         int conversion_code = cv::COLOR_RGB2BGR;
 
-        std::vector<cv::Scalar> posePalette = generateRandomColors(model->getNc(), model->getCh());
-        std::unordered_map<int, std::string> names = model->getNames();
+        // std::vector<cv::Scalar> posePalette = generateRandomColors(model->getNc(), model->getCh());
+        // std::unordered_map<int, std::string> names = model->getNames();
 
         // 转换颜色空间
         cv::cvtColor(rune_image, rune_image, conversion_code);
@@ -183,10 +188,11 @@ namespace qianli_rm_rune
 
         inference.RunInference(rune_image);
 
-        std::vector<std::vector<cv::Point>> contours;
+
+        std::vector<std::vector<cv::Point2f>> contours;
         cv::Mat result_image; // 声明用于存储处理后图像的变量
 
-        result_image = rune_image.clone(); // 克隆原始图像以便后续处理
+        // result_image = rune_image.clone(); // 克隆原始图像以便后续处理
         contours = inference.contours; // 获取检测到的轮廓
 
 

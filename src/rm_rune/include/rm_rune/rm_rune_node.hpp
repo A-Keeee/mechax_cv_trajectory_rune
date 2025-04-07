@@ -75,6 +75,10 @@ public:
 
     std::unique_ptr<AutoBackendOnnx> model;
 
+    // const std::string& modelPath = "/home/mechax/fyk/mechax_cv_trajectory_rune_openvino/src/rm_rune/model/buff480.onnx"; // 确保路径正确
+    // const float confidence_threshold = 0.5;
+    // const float NMS_threshold = 0.5;
+
     // // 定时器用于延迟初始化 image_transport
     rclcpp::TimerBase::SharedPtr init_timer_;
 };

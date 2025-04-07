@@ -12,7 +12,7 @@ if(NOT ONNXRUNTIME_ROOTDIR)
         set(ONNXRUNTIME_ROOTDIR "C:/Program Files (x86)/onnxruntime")
     else()
         # 非 Windows 系统下设置默认路径
-        set(ONNXRUNTIME_ROOTDIR "/home/fyk/onnxruntime-linux-x64-gpu-1.20.0")
+        set(ONNXRUNTIME_ROOTDIR "/home/mechax/onnxruntime")
     endif()
 endif()
 
@@ -29,6 +29,7 @@ include_directories(
   ${ONNXRUNTIME_ROOTDIR}/include
   ${ONNXRUNTIME_ROOTDIR}/include/onnxruntime/core/session
   ${CMAKE_SOURCE_DIR}/include
+  /usr/local/runtime/include
 )
 
 # find dependencies
@@ -76,6 +77,7 @@ add_library(${PROJECT_NAME} SHARED
   src/detect.cpp
   src/onnx_model_base.cpp
   src/ops.cpp
+  src/openvino_detect.cpp
 )
 ament_target_dependencies(${PROJECT_NAME} rclcpp rclcpp_components sensor_msgs geometry_msgs cv_bridge OpenCV tf2 tf2_ros image_transport tf2_geometry_msgs)
 
@@ -84,7 +86,7 @@ link_directories(${ONNXRUNTIME_ROOTDIR}/lib)
 target_link_directories(${PROJECT_NAME} PUBLIC
       $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
       $<INSTALL_INTERFACE:include>)
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} onnxruntime ceres glog)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} onnxruntime ceres glog /usr/local/runtime/lib/intel64/libopenvino.so)
 
 rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN qianli_rm_rune::RuneNode

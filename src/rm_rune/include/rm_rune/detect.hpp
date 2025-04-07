@@ -38,8 +38,8 @@ class ContourInfo
 {
 public:
     ContourInfo();
-    ContourInfo(const std::vector<cv::Point>& contour);
-    void setContour(const std::vector<cv::Point>& contour);
+    ContourInfo(const std::vector<cv::Point2f>& contour);
+    void setContour(const std::vector<cv::Point2f>& contour);
 
     // 计算面积
     double getArea();
@@ -62,15 +62,15 @@ public:
     // 绘制检测结果，包括边界框、关键点和掩膜
     void plot_results(cv::Mat img, std::vector<YoloResults>& results,
                     std::vector<cv::Scalar> color, std::unordered_map<int, std::string>& names,
-                    const cv::Size& shape, std::vector<std::vector<cv::Point>>& contours,cv::Mat& result_image);
+                    const cv::Size& shape, std::vector<std::vector<cv::Point2f>>& contours,cv::Mat& result_image);
 
 
     // 成员变量
-    std::vector<cv::Point> contour;
+    std::vector<cv::Point2f> contour;
     cv::Moments moments;
     cv::Mat huMoments;
-    cv::Point center;        // 正确的单一 Point 类型
-    cv::Point circle_center; // 正确的单一 Point 类型
+    cv::Point2f center;        // 正确的单一 Point 类型
+    cv::Point2f circle_center; // 正确的单一 Point 类型
     int index;               // 正确的单一 int 类型
     int conf;                // 正确的单一 int 类型
 

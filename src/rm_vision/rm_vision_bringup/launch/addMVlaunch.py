@@ -86,6 +86,6 @@ def generate_launch_description():
         #cam_detector,
         #detector_node,
         container,
-        delay_tracker_node,
-        delay_trajectory_node,
+        # delay_tracker_node,
+        # delay_trajectory_node,
     ])

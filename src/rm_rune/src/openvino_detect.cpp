@@ -1,4 +1,4 @@
-#include "inference.h"  // 引入自定义头文件
+#include "openvino_detect.hpp"  // 引入自定义头文件
 #include <memory>       // 智能指针
 #include <opencv2/dnn.hpp> // OpenCV DNN模块
 #include <random>       // 随机数生成
@@ -57,8 +57,8 @@ void Inference::InitializeModel(const std::string &model_path) {
     ppp.output().tensor().set_element_type(ov::element::f32);
     model = ppp.build(); // 完成预处理管道构建
 
-    // 编译模型，自动选择设备
-    compiled_model_ = core.compile_model(model, "CPU");
+    // 编译模型，选择设备
+    compiled_model_ = core.compile_model(model, "GPU");
     // 创建推理请求对象
     inference_request_ = compiled_model_.create_infer_request();
 
@@ -115,8 +115,8 @@ void Inference::PostProcessing(cv::Mat &frame) {
 
     //8400x23 detection_outputs
 
-    std::cout << "detection_outputs: " << detection_outputs.cols << std::endl;
-    std::cout << "detection_outputs: " << detection_outputs.rows << std::endl;
+    // std::cout << "detection_outputs: " << detection_outputs.cols << std::endl;
+    // std::cout << "detection_outputs: " << detection_outputs.rows << std::endl;
     // std::cout << "classes_.size(): " << classes_.size() << std::endl;
 
 
@@ -194,9 +194,11 @@ void Inference::PostProcessing(cv::Mat &frame) {
 
         contours.emplace_back();
         contours.back().push_back(cv::Point2f(result.class_id, result.confidence)); // 存储边界框
-        contours.back().push_back(result.key_points); 
+        for (const auto& kp : result.key_points) {
+            contours.back().push_back(kp); // ✅ 逐个添加点
+        }
 
-        DrawDetectedObject(frame, result); // 绘制检测结果
+        // DrawDetectedObject(frame, result); // 绘制检测结果
     }
 
 

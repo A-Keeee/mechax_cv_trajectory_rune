@@ -25,7 +25,7 @@ class Inference {
 
 	void RunInference(cv::Mat &frame);
 
-    std::vector<std::vector<cv::Point>> contours;
+    std::vector<std::vector<cv::Point2f>> contours;
 
  private:
 	void InitializeModel(const std::string &model_path);
