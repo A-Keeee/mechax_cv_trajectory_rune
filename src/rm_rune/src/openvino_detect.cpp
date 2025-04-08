@@ -75,6 +75,7 @@ void Inference::InitializeModel(const std::string &model_path) {
 
 // 执行推理流程
 void Inference::RunInference(cv::Mat &frame) {
+    contours.clear(); // 清空轮廓数据
     Preprocessing(frame);   // 预处理
     inference_request_.infer(); // 执行推理
     PostProcessing(frame);  // 后处理
@@ -198,7 +199,7 @@ void Inference::PostProcessing(cv::Mat &frame) {
             contours.back().push_back(kp); // ✅ 逐个添加点
         }
 
-        // DrawDetectedObject(frame, result); // 绘制检测结果
+        DrawDetectedObject(frame, result); // 绘制检测结果
     }
 
 

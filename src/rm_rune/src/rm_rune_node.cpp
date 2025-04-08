@@ -9,7 +9,7 @@ namespace qianli_rm_rune
     frame_count_(0),
     last_time_(this->now()),
     inference(  // ✅ 在初始化列表中构造对象
-        "/home/mechax/fyk/mechax_cv_trajectory_rune_openvino/src/rm_rune/model/buff480.onnx", // 模型路径
+        "/home/mechax/fyk/mechax_cv_trajectory_rune_openvino/src/rm_rune/model/buff640.onnx", // 模型路径
         cv::Size(480, 480),          // 输入尺寸
         0.5f,   // 置信度阈值
         0.5f   // NMS阈值
@@ -201,8 +201,9 @@ namespace qianli_rm_rune
         if (it_ && result_image_pub_)
         {   
             //debug
-            // auto result_msg = cv_bridge::CvImage(msg->header, "rgb8", result_image).toImageMsg();
-            // result_image_pub_.publish(result_msg); // 使用 image_transport 发布
+            cv::cvtColor(rune_image, rune_image, conversion_code);
+            auto result_msg = cv_bridge::CvImage(msg->header, "rgb8", rune_image).toImageMsg();
+            result_image_pub_.publish(result_msg); // 使用 image_transport 发布
             // RCLCPP_INFO(get_logger(), "Published result_image to /rune/result_image");
         }
         else
@@ -217,8 +218,8 @@ namespace qianli_rm_rune
             return;
         }
         else {
-            // contour_info_.setContour(contours[0]);
             // RCLCPP_INFO(get_logger(), "检测到rune" );
+            std::cout << contours[0] << std::endl;
         }
 
 
