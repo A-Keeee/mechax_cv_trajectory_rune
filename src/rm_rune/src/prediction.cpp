@@ -29,6 +29,10 @@ double Prediction::angle_of(cv::Point2f orientation) {
     if(angle < 0){angle += M_PI*2;}
     // std::cout << "angle:" <<angle*180/M_PI<<std::endl;
     double mod = fmod(angle, 2 * M_PI / 5);
+    // 处理浮点运算误差导致的负值
+    if (angle < 0) {
+        angle += 2 * M_PI / 5;
+    }
     return angle;
 }
 
@@ -158,7 +162,7 @@ private:
 
 // 拟合旋转参数
 void Prediction::fit() {
-    if (radians.size() < 50) {  // 至少需要50个数据点
+    if (radians.size() < 100) {  // 至少需要50个数据点
         std::cerr << "数据不足以进行拟合。" << std::endl;
         return;
     }
@@ -211,10 +215,10 @@ void Prediction::fit() {
         last_fit_time = std::chrono::system_clock::now();
 
         // 可选：输出拟合结果
-        std::cout << "拟合成功: " << params.to_string() << std::endl;
+        // std::cout << "拟合成功: " << params.to_string() << std::endl;
     } else {
         // 拟合失败
-        std::cerr << "拟合失败: " << summary.BriefReport() << std::endl;
+        // std::cerr << "拟合失败: " << summary.BriefReport() << std::endl;
     }
 }
 
@@ -241,7 +245,12 @@ double Prediction::predict() {
     // 使用拟合的参数进行精确预测
     double current = radian(times_sec.back(), params.k, params.b, params.a, params.omega, params.phi);
     double predicted = radian(times_sec.back() + cfg.hit_delay_sec, params.k, params.b, params.a, params.omega, params.phi);
-    return predicted - current;
+    if (fast_estimate_sense_of_rotation()){
+        return abs(predicted - current);
+    }
+    else{
+        return -abs(predicted - current);
+    }
 }
 
 // 更新预测器的状态，记录当前时间和弧度
@@ -250,7 +259,15 @@ void Prediction::update(cv::Point2f orientation) {
     if (!check_timeliness(current_time)) {
         reset();  // 如果更新不及时，则重置预测器
     }
+    if(!radians_raw.empty()){
+        if (radians_raw.back() - atan2(orientation.y, orientation.x) > M_PI / 6) 
+        {
+            reset();  // 如果角度差超过阈值，则重置预测器
+            std::cout << "reset prediction" << std::endl;
+        }
 
+    }
+    radians_raw.push_back(atan2(orientation.y, orientation.x));
     // 记录当前的角度（弧度）和时间
     radians.push_back(angle_of(orientation));
     duration<double> elapsed_seconds = current_time - start_time;

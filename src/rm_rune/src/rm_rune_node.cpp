@@ -9,7 +9,7 @@ namespace qianli_rm_rune
     frame_count_(0),
     last_time_(this->now()),
     inference(  // ✅ 在初始化列表中构造对象
-        "/home/mechax/fyk/mechax_cv_trajectory_rune_openvino/src/rm_rune/model/buff640.onnx", // 模型路径
+        "/home/mechax/fyk/mechax_cv_trajectory_rune_openvino/src/rm_rune/model/buff480.onnx", // 模型路径
         cv::Size(480, 480),          // 输入尺寸
         0.5f,   // 置信度阈值
         0.5f   // NMS阈值
@@ -197,19 +197,19 @@ namespace qianli_rm_rune
 
 
 
-        // 将处理后的图像转换为 ROS 消息并发布
-        if (it_ && result_image_pub_)
-        {   
-            //debug
-            cv::cvtColor(rune_image, rune_image, conversion_code);
-            auto result_msg = cv_bridge::CvImage(msg->header, "rgb8", rune_image).toImageMsg();
-            result_image_pub_.publish(result_msg); // 使用 image_transport 发布
-            // RCLCPP_INFO(get_logger(), "Published result_image to /rune/result_image");
-        }
-        else
-        {
-            RCLCPP_WARN(get_logger(), "ImageTransport not initialized yet. Skipping image publish.");
-        }
+        // // 将处理后的图像转换为 ROS 消息并发布
+        // if (it_ && result_image_pub_)
+        // {   
+        //     //debug
+        //     cv::cvtColor(rune_image, rune_image, conversion_code);
+        //     auto result_msg = cv_bridge::CvImage(msg->header, "rgb8", rune_image).toImageMsg();
+        //     result_image_pub_.publish(result_msg); // 使用 image_transport 发布
+        //     // RCLCPP_INFO(get_logger(), "Published result_image to /rune/result_image");
+        // }
+        // else
+        // {
+        //     RCLCPP_WARN(get_logger(), "ImageTransport not initialized yet. Skipping image publish.");
+        // }
 
 
 
@@ -219,7 +219,7 @@ namespace qianli_rm_rune
         }
         else {
             // RCLCPP_INFO(get_logger(), "检测到rune" );
-            std::cout << contours[0] << std::endl;
+            // std::cout << contours[0] << std::endl;
         }
 
 
@@ -259,20 +259,37 @@ namespace qianli_rm_rune
         // 使用Blade类对象对检测到的轮廓信息进行处理
         Blade blade(contours_info_[0], cfg_);
 
-
         // 更新预测器并进行预测
         
-        // predictor.update(blade.vector); // 计算目标与中心之间的向量
+        predictor.update(blade.vector); // 计算目标与中心之间的向量
 
 
         //debug predict
-        // auto radian = predictor.predict(); // 返回预测的角度
-        // auto predicted_vector = power_rune_.predict(blade.vector, radian); // 返回预测的x，y坐标  1440;1080
+        auto radian = predictor.predict(); // 返回预测的角度
+        radian = abs(radian);
+        auto predicted_vector = power_rune_.predict(blade.vector, radian); // 返回预测的x，y坐标  1440;1080
+        // std::cout << "radian: " << radian << std::endl;
         // RCLCPP_INFO(get_logger(), "Predicted vector: x = %f, y = %f", predicted_vector.x, predicted_vector.y);
 
-        // cv::Point2f predicted_point;
-        // predicted_point.x = predicted_vector.x + blade.circle_center.x;
-        // predicted_point.y = predicted_vector.y + blade.circle_center.y;
+        cv::Point2f predicted_point;
+        predicted_point.x = predicted_vector.x + blade.circle_center.x;
+        predicted_point.y = predicted_vector.y + blade.circle_center.y;
+
+        // 将处理后的图像转换为 ROS 消息并发布
+        if (it_ && result_image_pub_)
+        {   
+            // debug
+            cv::cvtColor(rune_image, rune_image, conversion_code);
+            cv::circle(rune_image, predicted_point, 10, cv::Scalar(0, 255, 0), -1); // 绘制预测点
+            auto result_msg = cv_bridge::CvImage(msg->header, "rgb8", rune_image).toImageMsg();
+            result_image_pub_.publish(result_msg); // 使用 image_transport 发布
+            // RCLCPP_INFO(get_logger(), "Published result_image to /rune/result_image");
+        }
+        else
+        {
+            RCLCPP_WARN(get_logger(), "ImageTransport not initialized yet. Skipping image publish.");
+        }
+
 
 
         // 如果没有相机信息，无法计算3D点位，输出错误信息
@@ -312,47 +329,16 @@ namespace qianli_rm_rune
 
 
 
-
-        // std::cout << "x:" << point_msg.point.x << std::endl;
-        // std::cout << "y:" << point_msg.point.y << std::endl;
-        // std::cout << "z:" << point_msg.point.z << std::endl;
-
-        // // 创建消息并填充预测的3D点位
-        // geometry_msgs::msg::PointStamped point_msg;
-        // point_msg.header.frame_id = "camera_link";
-        // point_msg.header.stamp = msg->header.stamp;
-        // point_msg.point.x = 1;
-        // point_msg.point.y = -(static_cast<double>(predicted_vector.x) + static_cast<double>(blade.circle_center.x) - camera_matrix_.at<double>(0,2)) / camera_matrix_.at<double>(0,0);
-        // point_msg.point.z = -(static_cast<double>(predicted_vector.y) + static_cast<double>(blade.circle_center.y) - camera_matrix_.at<double>(1,2)) / camera_matrix_.at<double>(1,1);
-
-
-        // float z_constant = std::sqrt(predicted_vector.x * predicted_vector.x + predicted_vector.y * predicted_vector.y) * 0.7 * cfg_.distance_correction_ratio;
-        // // 根据相机参数和预测向量，计算3D距离
-        // float distance = (camera_matrix_.at<double>(0,0) + camera_matrix_.at<double>(1,1)) / 2 / z_constant;
-
-        // // std::cout << "z_constant:" << z_constant << std::endl;
-        // std::cout << "distance:" << distance << std::endl;
-
-
-        // // 将计算后的距离信息应用到3D点位
-        // point_msg.point.x *= distance;
-        // point_msg.point.y *= distance;
-        // point_msg.point.z *= distance;
-
         geometry_msgs::msg::PointStamped transformed_msg;
         try {
             transformed_msg.point = tf2_buffer_->transform(point_msg, "odom").point;
-            // double temp = transformed_msg.point.x;
-            // transformed_msg.point.x = transformed_msg.point.y;
-            // transformed_msg.point.y = temp;
             transformed_msg.header.frame_id = "odom";
             transformed_msg.header.stamp = point_msg.header.stamp;
             rune_pose_pub_->publish(transformed_msg);
-            // rune_pose_pub_->publish(point_msg);
             // RCLCPP_INFO(get_logger(), "Published rune prediction: x = %f, y = %f, z = %f", point_msg.point.x, point_msg.point.y, point_msg.point.z);
             // RCLCPP_INFO(get_logger(), "Published rune prediction: x = %f, y = %f, z = %f", transformed_msg.point.x, transformed_msg.point.y, transformed_msg.point.z);
         } catch (tf2::TransformException& ex) {
-            RCLCPP_WARN(get_logger(), "无法将坐标从 camera_link 转换到 odom：%s", ex.what());
+            // RCLCPP_WARN(get_logger(), "无法将坐标从 camera_link 转换到 odom：%s", ex.what());
         }
     }
 } // namespace qianli_rm_rune

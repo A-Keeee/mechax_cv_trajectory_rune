@@ -134,6 +134,7 @@ public:
     // 拟合状态和数据记录
     bool has_fitted = false;    ///< 是否已经进行过拟合
     vector<double> radians;     ///< 记录的弧度值
+    vector<double> radians_raw;     // 原始记录的弧度值
     vector<double> times_sec;   ///< 记录的时间（秒）
 
 private:
