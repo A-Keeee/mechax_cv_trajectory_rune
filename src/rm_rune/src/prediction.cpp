@@ -263,7 +263,7 @@ void Prediction::update(cv::Point2f orientation) {
         if (radians_raw.back() - atan2(orientation.y, orientation.x) > M_PI / 6) 
         {
             reset();  // 如果角度差超过阈值，则重置预测器
-            std::cout << "reset prediction" << std::endl;
+            // std::cout << "reset prediction" << std::endl;
         }
 
     }

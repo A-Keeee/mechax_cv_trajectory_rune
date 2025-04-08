@@ -268,12 +268,27 @@ namespace qianli_rm_rune
         auto radian = predictor.predict(); // 返回预测的角度
         radian = abs(radian);
         auto predicted_vector = power_rune_.predict(blade.vector, radian); // 返回预测的x，y坐标  1440;1080
+        auto predicted_vectorP1 = power_rune_.predict(rune_imagePoints[0]-blade.circle_center, radian); 
+        auto predicted_vectorP2 = power_rune_.predict(rune_imagePoints[1]-blade.circle_center, radian);
+        auto predicted_vectorP3 = power_rune_.predict(rune_imagePoints[2]-blade.circle_center, radian);
+        auto predicted_vectorP4 = power_rune_.predict(rune_imagePoints[3]-blade.circle_center, radian);
         // std::cout << "radian: " << radian << std::endl;
         // RCLCPP_INFO(get_logger(), "Predicted vector: x = %f, y = %f", predicted_vector.x, predicted_vector.y);
 
         cv::Point2f predicted_point;
         predicted_point.x = predicted_vector.x + blade.circle_center.x;
         predicted_point.y = predicted_vector.y + blade.circle_center.y;
+        rune_imagePoints[0].x = predicted_vectorP1.x + blade.circle_center.x;
+        rune_imagePoints[0].y = predicted_vectorP1.y + blade.circle_center.y;
+        rune_imagePoints[1].x = predicted_vectorP2.x + blade.circle_center.x;
+        rune_imagePoints[1].y = predicted_vectorP2.y + blade.circle_center.y;
+        rune_imagePoints[2].x = predicted_vectorP3.x + blade.circle_center.x;
+        rune_imagePoints[2].y = predicted_vectorP3.y + blade.circle_center.y;
+        rune_imagePoints[3].x = predicted_vectorP4.x + blade.circle_center.x;
+        rune_imagePoints[3].y = predicted_vectorP4.y + blade.circle_center.y;
+        
+
+
 
         // 将处理后的图像转换为 ROS 消息并发布
         if (it_ && result_image_pub_)
@@ -281,6 +296,10 @@ namespace qianli_rm_rune
             // debug
             cv::cvtColor(rune_image, rune_image, conversion_code);
             cv::circle(rune_image, predicted_point, 10, cv::Scalar(0, 255, 0), -1); // 绘制预测点
+            cv::circle(rune_image, rune_imagePoints[0], 5, cv::Scalar(255, 0, 0), -1); 
+            cv::circle(rune_image, rune_imagePoints[1], 5, cv::Scalar(255, 0, 0), -1);
+            cv::circle(rune_image, rune_imagePoints[2], 5, cv::Scalar(255, 0, 0), -1);
+            cv::circle(rune_image, rune_imagePoints[3], 5, cv::Scalar(255, 0, 0), -1);
             auto result_msg = cv_bridge::CvImage(msg->header, "rgb8", rune_image).toImageMsg();
             result_image_pub_.publish(result_msg); // 使用 image_transport 发布
             // RCLCPP_INFO(get_logger(), "Published result_image to /rune/result_image");
