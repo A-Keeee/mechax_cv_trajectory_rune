@@ -9,7 +9,7 @@ namespace qianli_rm_rune
     frame_count_(0),
     last_time_(this->now()),
     inference(  // ✅ 在初始化列表中构造对象
-        "/home/mechax/fyk/mechax_cv_trajectory_rune_openvino/src/rm_rune/model/buff480.onnx", // 模型路径
+        "/home/mechax/fyk/mechax_cv_trajectory_rune_openvino/src/rm_rune/model/buff320.onnx", // 模型路径
         cv::Size(480, 480),          // 输入尺寸
         0.5f,   // 置信度阈值
         0.5f   // NMS阈值
@@ -95,47 +95,6 @@ namespace qianli_rm_rune
         );
     }
 
-        /**
-     * 计算旋转后的点 B'
-     * @param A        原坐标点 A (cv::Point 或 cv::Point2f)
-     * @param B        原坐标点 B (类型需与 A 一致)
-     * @param A_prime  旋转后的点 A' (类型需与 A 一致)
-     * @param theta    旋转角度 (弧度，逆时针为正方向)
-     * @return         旋转后的点 B' (返回 cv::Point2f 以保留浮点精度)
-     */
-    cv::Point2f calculateBPrime(const cv::Point2f& A, const cv::Point2f& B, 
-                                const cv::Point2f& A_prime, double theta) {
-        const double cos_theta = cos(theta);
-        const double sin_theta = sin(theta);
-
-        // 1. 计算旋转后的 A 的坐标 R(theta) * A
-        const double R_Ax = A.x * cos_theta - A.y * sin_theta;
-        const double R_Ay = A.x * sin_theta + A.y * cos_theta;
-
-        // 2. 计算平移向量 d = A' - R(theta) * A
-        const double dx = A_prime.x - R_Ax;
-        const double dy = A_prime.y - R_Ay;
-
-        // 3. 计算旋转中心 C 的坐标
-        const double denominator = 2.0 * (1.0 - cos_theta);
-        if (std::abs(denominator) < 1e-9) { // 处理 theta 接近 0 的情况
-            // 直接平移：B' = B + (A' - A)
-            return cv::Point2f(B.x + dx, B.y + dy);
-        }
-
-        const double cx = (dx * (1 - cos_theta) + dy * sin_theta) / denominator;
-        const double cy = (-dx * sin_theta + dy * (1 - cos_theta)) / denominator;
-
-        // 4. 计算 B 相对于 C 的向量并旋转
-        const double vBx = B.x - cx;
-        const double vBy = B.y - cy;
-
-        const double rotated_vBx = vBx * cos_theta - vBy * sin_theta;
-        const double rotated_vBy = vBx * sin_theta + vBy * cos_theta;
-
-        // 5. 合成 B' 的坐标
-        return cv::Point2f(cx + rotated_vBx, cy + rotated_vBy);
-    }
 
 
     /*
@@ -266,7 +225,6 @@ namespace qianli_rm_rune
 
         //debug predict
         auto radian = predictor.predict(); // 返回预测的角度
-        radian = abs(radian);
         auto predicted_vector = power_rune_.predict(blade.vector, radian); // 返回预测的x，y坐标  1440;1080
         auto predicted_vectorP1 = power_rune_.predict(rune_imagePoints[0]-blade.circle_center, radian); 
         auto predicted_vectorP2 = power_rune_.predict(rune_imagePoints[1]-blade.circle_center, radian);

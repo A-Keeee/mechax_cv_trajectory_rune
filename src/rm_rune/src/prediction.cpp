@@ -21,19 +21,11 @@ double Prediction::radian(double time, double k, double b, double a, double omeg
 @param orientation: 表示方向的二维向量
 @return: 返回计算的角度，范围在 [0, 2pi/5) 内
 */
-double Prediction::angle_of(cv::Point2f orientation) {
-    // 通过 atan2 计算角度
-    float x = orientation.x;
-    float y = orientation.y;
-    double angle = atan2(y, x);
-    if(angle < 0){angle += M_PI*2;}
+double Prediction::angle_of(double angle_raw) {
+    if(angle_raw < 0){angle_raw += M_PI*2;}
     // std::cout << "angle:" <<angle*180/M_PI<<std::endl;
-    double mod = fmod(angle, 2 * M_PI / 5);
-    // 处理浮点运算误差导致的负值
-    if (angle < 0) {
-        angle += 2 * M_PI / 5;
-    }
-    return angle;
+    double mod = fmod(angle_raw, 2 * M_PI / 5);
+    return angle_raw;
 }
 
 // RotationParams 默认构造函数，初始化旋转参数
@@ -86,7 +78,7 @@ bool Prediction::check_timeliness(system_clock::time_point current_time) {
     return elapsed_seconds.count() < 0.3;  // 如果时间差小于 0.3 秒，则认为是及时的
 }
 
-std::vector<double> Prediction::unwrapped_radians() {
+std::vector<double> Prediction::unwrapped_radians(std::vector<double> radians) {
     // 实现 np.unwrap(radians * 5) / 5 的逻辑
     if (radians.empty()) return {};
 
@@ -122,10 +114,47 @@ std::vector<double> Prediction::unwrapped_radians() {
     return unwrapped;
 }
 
-// 检查是否满足拟合条件（弧度数量超过 50）
+
+std::vector<double> Prediction::unwrapped_radians_yaw(std::vector<double> radians) {
+    // 实现 np.unwrap(radians * 5) / 5 的逻辑
+    if (radians.empty()) return {};
+
+    std::vector<double> unwrapped;
+    unwrapped.reserve(radians.size());
+
+    double scale = 1.0;
+    double last = radians[0] * scale;
+    unwrapped.push_back(last);
+
+    for (size_t i = 1; i < radians.size(); ++i) {
+        double current = radians[i] * scale;
+        double delta = current - last;
+
+        if (delta > M_PI) {
+            delta -= 2 * M_PI;
+        }
+        else if (delta < -M_PI) {
+            delta += 2 * M_PI;
+        }
+
+        double new_angle = last + delta;
+        unwrapped.push_back(new_angle);
+        last = new_angle;
+    }
+
+    // 将结果除以 5
+    for(auto& angle : unwrapped){
+        angle /= scale;
+    }
+
+    return unwrapped;
+}
+
+
+// 检查是否满足拟合条件（弧度数量超过）
 bool Prediction::can_fit() 
 {
-    bool result = radians.size() > 50;
+    bool result = radians.size() > 10;
     return result;
 }
 
@@ -162,13 +191,13 @@ private:
 
 // 拟合旋转参数
 void Prediction::fit() {
-    if (radians.size() < 100) {  // 至少需要50个数据点
+    if (radians.size() < 10) {  // 至少需要50个数据点
         std::cerr << "数据不足以进行拟合。" << std::endl;
         return;
     }
 
     // 获取解包后的弧度值
-    std::vector<double> unwrapped = unwrapped_radians();
+    std::vector<double> unwrapped = unwrapped_radians(radians);
     if (unwrapped.empty()) {
         std::cerr << "没有数据可用于拟合。" << std::endl;
         return;
@@ -224,10 +253,10 @@ void Prediction::fit() {
 
 // 快速估计旋转的方向
 bool Prediction::fast_estimate_sense_of_rotation() {
-    if (radians.empty()) return true;  // 默认正转
+    if (radians_raw.empty()) return true;  // 默认正转
 
-    double end = radians.back();
-    double start = radians.front();
+    double end = radians_raw.back();
+    double start = radians_raw.front();
     return end > start;  // 如果末尾的角度大于开始的角度，则方向为正
 }
 
@@ -237,8 +266,12 @@ double Prediction::predict() {
         fit();  // 如果可以拟合且需要拟合，则进行拟合
     }
 
+    // 不使用拟合
+    has_fitted = false;
+
     if (!has_fitted) {
         // 如果未拟合，则使用快速估算来预测角度
+        std::cout << "未拟合，使用快速估算" << std::endl;
         return fast_estimate_sense_of_rotation() ? (M_PI / 3.0 * cfg.hit_delay_sec) : (-M_PI / 3.0 * cfg.hit_delay_sec);
     }
 
@@ -251,6 +284,7 @@ double Prediction::predict() {
     else{
         return -abs(predicted - current);
     }
+    // return predicted - current ;  // 返回预测的角度差
 }
 
 // 更新预测器的状态，记录当前时间和弧度
@@ -259,17 +293,34 @@ void Prediction::update(cv::Point2f orientation) {
     if (!check_timeliness(current_time)) {
         reset();  // 如果更新不及时，则重置预测器
     }
-    if(!radians_raw.empty()){
-        if (radians_raw.back() - atan2(orientation.y, orientation.x) > M_PI / 6) 
-        {
-            reset();  // 如果角度差超过阈值，则重置预测器
-            // std::cout << "reset prediction" << std::endl;
-        }
 
-    }
-    radians_raw.push_back(atan2(orientation.y, orientation.x));
+    // if(!radians_raw.empty()){
+    //     if (radians_raw.back() - atan2(orientation.y, orientation.x) > M_PI / 6) 
+    //     {   
+    //         radians.clear();  // 清空原始弧度数据
+    //         reset();  
+    //         std::cout << "reset prediction" << std::endl;
+    //     }
+
+    // }
+
+    // radians_raw.push_back(atan2(orientation.y, orientation.x));
     // 记录当前的角度（弧度）和时间
-    radians.push_back(angle_of(orientation));
+    radians_raw.push_back(atan2(orientation.y, orientation.x));
+    radians_raw = unwrapped_radians_yaw(radians_raw);
+    
+    // std::cout << "radians_raw: ";
+    // for (const auto& radian : radians_raw) {
+    //     std::cout << radian << " ";
+    // }
+    // std::cout << std::endl;
+
+
+
+
+    for (auto& radian : radians_raw) {
+        radians.push_back(angle_of(radian));
+    }
     duration<double> elapsed_seconds = current_time - start_time;
     times_sec.push_back(elapsed_seconds.count());
     last_update_time = current_time;  // 更新最后一次更新时间
