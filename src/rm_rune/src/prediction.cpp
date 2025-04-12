@@ -267,7 +267,7 @@ double Prediction::predict() {
     }
 
     // 不使用拟合
-    has_fitted = false;
+    // has_fitted = false;
 
     if (!has_fitted) {
         // 如果未拟合，则使用快速估算来预测角度
