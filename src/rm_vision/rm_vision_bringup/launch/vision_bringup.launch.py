@@ -39,14 +39,14 @@ def generate_launch_description():
         extra_arguments=[{'use_intra_process_comms': True}],
     )
 
-    rune_node = Node(
-        package='rune',
-        executable='main',
-        name='rune',
-        output='both',
-        emulate_tty=True,
-        on_exit=Shutdown(),
-    )
+    # rune_node = Node(
+    #     package='rune',
+    #     executable='main',
+    #     name='rune',
+    #     output='both',
+    #     emulate_tty=True,
+    #     on_exit=Shutdown(),
+    # )
 
     serial_driver_node = Node(
         package='rm_serial_driver',
@@ -69,6 +69,15 @@ def generate_launch_description():
         on_exit=Shutdown(),
     )
 
+    rune_composable_node = ComposableNode(
+        package='rm_rune',
+        plugin='qianli_rm_rune::RuneNode',
+        name='rm_rune',
+        parameters=[node_params],
+        extra_arguments=[{'use_intra_process_comms': True}],
+    ) 
+
+
     # delay_serial_node 会以1.5秒的周期触发执行串口驱动节点，
     # 而 delay_tracker_node 会以2.0秒的周期触发执行追踪节点。
     delay_serial_node = TimerAction(
@@ -86,10 +95,10 @@ def generate_launch_description():
         actions=[trajectory_node],
     )
 
-    delay_rune_node = TimerAction(
-        period=2.0,
-        actions=[rune_node],
-    )
+    # delay_rune_node = TimerAction(
+    #     period=2.0,
+    #     actions=[rune_node],
+    # )
 
     """Generate launch description with multiple components."""
     container = ComposableNodeContainer(
@@ -100,6 +109,7 @@ def generate_launch_description():
             composable_node_descriptions=[
                 cam_detector,
                 detector_node,
+                rune_composable_node,
             ],
             output='both',
     )
@@ -111,5 +121,4 @@ def generate_launch_description():
         delay_serial_node,     # 串口通信
         delay_tracker_node,    # tracker
         delay_trajectory_node, # 轨迹规划,弹道解算
-        rune_node,             # rune
     ])
