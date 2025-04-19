@@ -277,10 +277,10 @@ namespace qianli_rm_rune
         
 
         std::vector<cv::Point3f> rune_objectPoints = {
-            {0, 16, 75},
-            {0, 16, 65},
-            {0, -16, 65},
-            {0, -16, 75}
+            {0, 16, 5},
+            {0, 16, -5},
+            {0, -16, -5},
+            {0, -16, 5}
         };
 
 
