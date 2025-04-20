@@ -58,7 +58,7 @@ void Inference::InitializeModel(const std::string &model_path) {
     model = ppp.build(); // 完成预处理管道构建
 
     // 编译模型，选择设备
-    compiled_model_ = core.compile_model(model, "GPU");
+    compiled_model_ = core.compile_model(model, "AUTO");
     // 创建推理请求对象
     inference_request_ = compiled_model_.create_infer_request();
 
@@ -79,6 +79,8 @@ void Inference::RunInference(cv::Mat &frame) {
     Preprocessing(frame);   // 预处理
     inference_request_.infer(); // 执行推理
     PostProcessing(frame);  // 后处理
+    // cv::cvtColor(frame, frame, cv::COLOR_RGB2BGR);
+
 }
 
 // 图像预处理方法

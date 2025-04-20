@@ -9,7 +9,7 @@ namespace qianli_rm_rune
     frame_count_(0),
     last_time_(this->now()),
     inference(  // ✅ 在初始化列表中构造对象
-        "/home/mechax/fyk/mechax_cv_trajectory_rune_openvino/src/rm_rune/model/buff480.onnx", // 模型路径
+        "/home/fyk/fyk/mechax_cv_trajectroy_rune_openvino/src/rm_rune/model/buff480.onnx", // 模型路径
         cv::Size(480, 480),          // 输入尺寸
         0.5f,   // 置信度阈值
         0.5f   // NMS阈值
@@ -134,16 +134,7 @@ namespace qianli_rm_rune
         float mask_threshold = 0.80f;
         float conf_threshold = 0.80f;
         float iou_threshold = 0.80f;
-        int conversion_code = cv::COLOR_RGB2BGR;
 
-        // std::vector<cv::Scalar> posePalette = generateRandomColors(model->getNc(), model->getCh());
-        // std::unordered_map<int, std::string> names = model->getNames();
-
-        // 转换颜色空间
-        cv::cvtColor(rune_image, rune_image, conversion_code);
-
-        // 进行推理
-        // std::vector<YoloResults> objs = model->predict_once(rune_image, conf_threshold, iou_threshold, mask_threshold, conversion_code);
 
         inference.RunInference(rune_image);
 
@@ -154,21 +145,6 @@ namespace qianli_rm_rune
         // result_image = rune_image.clone(); // 克隆原始图像以便后续处理
         contours = inference.contours; // 获取检测到的轮廓
 
-
-
-        // // 将处理后的图像转换为 ROS 消息并发布
-        // if (it_ && result_image_pub_)
-        // {   
-        //     //debug
-        //     cv::cvtColor(rune_image, rune_image, conversion_code);
-        //     auto result_msg = cv_bridge::CvImage(msg->header, "rgb8", rune_image).toImageMsg();
-        //     result_image_pub_.publish(result_msg); // 使用 image_transport 发布
-        //     // RCLCPP_INFO(get_logger(), "Published result_image to /rune/result_image");
-        // }
-        // else
-        // {
-        //     RCLCPP_WARN(get_logger(), "ImageTransport not initialized yet. Skipping image publish.");
-        // }
 
 
 
@@ -246,13 +222,10 @@ namespace qianli_rm_rune
         rune_imagePoints[3].y = predicted_vectorP4.y + blade.circle_center.y;
         
 
-
-
         // 将处理后的图像转换为 ROS 消息并发布
         if (it_ && result_image_pub_)
         {   
             // debug
-            cv::cvtColor(rune_image, rune_image, conversion_code);
             cv::circle(rune_image, predicted_point, 10, cv::Scalar(0, 255, 0), -1); // 绘制预测点
             cv::circle(rune_image, rune_imagePoints[0], 5, cv::Scalar(255, 0, 0), -1); 
             cv::circle(rune_image, rune_imagePoints[1], 5, cv::Scalar(255, 0, 0), -1);
